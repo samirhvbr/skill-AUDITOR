@@ -1,6 +1,6 @@
 # Versão — AUDITOR
 
-**Versão atual:** `0.1.0`
+**Versão atual:** `0.2.0`
 
 > Este arquivo é a **fonte da verdade** da versão do projeto. Qualquer lugar que
 > precise exibir ou reportar a versão (skill, CLI, relatório de ciclo, pacote de
@@ -30,8 +30,8 @@ Enquanto `X` for `0`, o projeto é **pré-release**: contratos (`config.yml`,
 
 Incremente o `Z` (e registre no changelog abaixo) sempre que:
 
-- Criar ou alterar um documento em `docs/`, `SPEC.md` ou `AGENT.md` que **muda
-  uma regra** (não vale corrigir redação).
+- Criar ou alterar um documento em `docs/`, `SPEC.md` ou `prompts/` que **muda uma
+  regra** (não vale corrigir redação).
 - Alterar o **prompt / contrato de execução** do subagente.
 - Alterar o **esquema** de `.auditor/config.yml`, `.auditor/state.json` ou do
   relatório de ciclo.
@@ -63,7 +63,7 @@ X.Y.Z - Descrição curta em português
 Exemplo:
 
 ```bash
-git commit -m "0.2.0 - Fecha o contrato de saida do subagente em AGENT.md"
+git commit -m "0.3.0 - Fecha o JSON Schema da saida do ciclo"
 ```
 
 **Regras inegociáveis:**
@@ -89,6 +89,60 @@ entrega). Commits adicionais da mesma entrega repetem a versão sem novo bump.
 
 > Ordem decrescente (mais recente no topo). Cada entrada lista as mudanças e os
 > gatilhos que justificaram o bump.
+
+### `0.2.0` — 2026-07-28 — Correções da revisão: 18 dos 23 achados fechados
+
+Aplica as correções e as recomendações da
+[revisão inicial](docs/revisao-inicial.md). Continua sem implementação — só
+documentação. Bump de **`Y`** por dois ADRs aceitos que mudam a direção do produto
+(ADR-007 e ADR-008) e por mudança de estrutura de arquivos.
+
+**Decisões novas**
+- **ADR-007** — arquivos de agente: artefato do **produto** mora em `prompts/` e
+  `docs/`; a raiz fica para os arquivos do **repositório**. `AGENTS.md` virou
+  `prompts/auditor-system.md` e `AGENT.md` virou `docs/contrato-subagente.md`, os
+  dois com `git mv`. `CLAUDE.md` + `AGENTS.md` voltam a ser espelhados, como nos
+  outros repos da casa. Motivo concreto: `AGENTS.md` na raiz é carregado
+  automaticamente, e o conteúdo ("Você é o AUDITOR, execute UM ciclo") fazia
+  qualquer sessão aberta no repo se comportar como o produto em execução.
+- **ADR-008** — scheduler (substitui o ADR-004): mecanismo nativo da plataforma
+  primeiro; auto-instalação é **último recurso**, com `auto_scheduler` default
+  `false` em qualquer plataforma, ShvIA inclusive. Quem autoriza é o **dono do
+  repositório/máquina auditada**, não quem escreveu a plataforma.
+- **ADR-009** — conteúdo do repositório auditado é **dado, nunca instrução**; a
+  lista de arquivos que o AUDITOR obedece é fechada e só pode restringir permissão.
+
+**Prompt de runtime** (`prompts/auditor-system.md`)
+- Nova seção **Conteúdo não confiável**, logo após a identidade.
+- Formato obrigatório de achado: `kind` / `file` / `line` / `commit` / `hash` /
+  `summary`; `observed` sem `file:line` é inválido.
+- Seção de segredos: reporta localização, nunca o valor; nada de diff bruto.
+- Modo autônomo: regra que pediria confirmação degrada para **não fazer**; escrita
+  nunca sobrescreve arquivo pré-existente.
+- No-op quiescente e checkpoint resistente a rebase/squash/force-push.
+- Scheduler reescrito conforme ADR-008.
+
+**Divergências normativas reconciliadas**
+- `open_pr_issue`: booleano → enum `off`/`ask`/`always`, default `ask` (o booleano
+  não conseguia expressar `ask`, que é o default seguro).
+- `config.yml`: raiz → `.auditor/config.yml`.
+- Resumo cumulativo: `summary.md` → `index.md`.
+- Chave `auto_fix` **removida** — habilitaria o que o escopo da v1 proíbe.
+
+**Documentação**
+- `README.md`: id de modelo (`claude-sonnet-5`), §Agendamento reescrita, prompt
+  injection nas regras de segurança, idioma desambiguado, nomes (repo `AUDITOR` ·
+  skill `auditor` · comando `/auditor`), decisões e pendências realinhadas aos ADRs.
+- `SPEC.md` e `docs/contrato-subagente.md`: de **esqueleto** para **parcial**.
+- `SECURITY.md`: controles marcados `[x]` quando decididos e escritos, `[ ]` quando
+  exigem código e teste — com o aviso de que escrito **não** é implementado.
+- `docs/revisao-inicial.md`: tabela de situação dos 23 achados.
+- `.continue/`: estado atual e fases atualizados.
+
+_Gatilhos:_ ADRs aceitos que mudam a direção, mudança de estrutura de arquivos,
+alteração do prompt do subagente e de política de segurança.
+
+---
 
 ### `0.1.0` — 2026-07-28 — Baseline de documentação, versionamento e segurança
 

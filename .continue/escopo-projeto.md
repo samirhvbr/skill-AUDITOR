@@ -1,12 +1,15 @@
 # Escopo e fases — AUDITOR
 
-> ⚠️ **PROPOSTA — aguarda aprovação do Samir.** Nada aqui é decisão fechada. As
-> decisões fechadas estão em [`docs/decisoes.md`](../docs/decisoes.md) (ADR-001 a
-> ADR-006). Este arquivo organiza os "Próximos passos sugeridos" do `README.md` em
+> ⚠️ **PROPOSTA — aguarda aprovação do Samir.** As fases em si não são decisão
+> fechada; as decisões estão em [`docs/decisoes.md`](../docs/decisoes.md) (ADR-001 a
+> ADR-009). Este arquivo organiza os "Próximos passos sugeridos" do `README.md` em
 > fases com critério de pronto, para dar ordem e permitir cobrar entrega.
 >
-> Ao aprovar (ou alterar) este escopo, registrar como **ADR-007** e bumpar `Y` em
+> Ao aprovar (ou alterar) este escopo, registrar como **ADR-010** e bumpar `Y` em
 > `version.md`.
+>
+> **Situação:** F0 e F1 estão parcialmente feitas — o que já fechou está marcado com
+> ✅, o que falta com ⛔.
 
 ---
 
@@ -23,14 +26,17 @@ sem gate de escrita, automatizar só multiplica um comportamento não verificado
 
 **Objetivo:** trocar inferência por fato antes de desenhar qualquer coisa.
 
-- Validar o achado **A-13** contra o Claude Code instalado: existem skills,
-  subagentes, hooks, `/loop` e rotinas agendadas? Como se declara cada um?
-- Validar **A-01**: catálogo real de modelos e o formato aceito no seletor.
-- Validar o equivalente no ShvIA (gateway `ai.shvia.org`, repo `~/x/SHVIA/SHVIA-WEB`).
+- ✅ **Claude Code — as cinco primitivas existem** (skills, subagentes, hooks,
+  execução recorrente, rotinas agendadas). Base do ADR-008.
+- ⛔ **Falta:** documentar **como cada uma se declara** no Claude Code — formato do
+  arquivo de skill, do subagente, do hook, registro da rotina.
+- ⛔ **Falta:** validar o equivalente no **ShvIA** (gateway `ai.shvia.org`, repo
+  `~/x/SHVIA/SHVIA-WEB`). Hoje é inferência.
+- ⛔ **Falta:** catálogo real de modelos por plataforma e o formato aceito (**P-01**).
 
 **Pronto quando:** um documento em `docs/` lista, por plataforma, quais primitivas
 existem e como se declaram — com evidência (comando rodado, arquivo, saída), não
-com "deve existir". **ADR-004 reescrito** com base no resultado.
+com "deve existir".
 
 ---
 
@@ -38,18 +44,20 @@ com "deve existir". **ADR-004 reescrito** com base no resultado.
 
 **Objetivo:** o que hoje é prosa vira esquema verificável.
 
-- **Reconciliar `AGENTS.md` × `README.md`** (A-20 a A-23) e consolidar
-  `AGENTS.md` × `AGENT.md` (**P-12** / A-19). Barato e primeiro: enquanto dois
-  documentos normativos discordarem, toda especificação escrita em cima deles nasce
-  errada em pelo menos um lado.
-- `SPEC.md`: sintaxe canônica do comando (ADR-005/006), gramática do intervalo,
-  esquema de `.auditor/config.yml`, defaults e regras de validação.
-- `AGENT.md`: prompt do subagente, **JSON Schema** da saída do ciclo (A-11),
-  formato obrigatório de evidência — `file` / `line` / `commit` / `kind` ∈
-  {`observed`, `inferred`, `recommended`} (A-12), catálogo de modelos e fallbacks.
-- Esquema do `state.json`, incluindo checkpoint resistente a rebase/squash/
-  force-push (A-09) e hash estável de finding para dedup (A-10).
-- Fechar **P-08** (`.auditor/` versionado ou não) — muda o esquema de estado.
+- ✅ **Reconciliar as divergências normativas** (A-19 a A-23) — feito em `0.2.0`
+  pelos ADR-007/008/009.
+- ✅ `SPEC.md`: localização e defaults do `config.yml`, estrutura de `.auditor/`,
+  no-op quiescente, modo autônomo.
+- ✅ `docs/contrato-subagente.md`: formato obrigatório de achado — `file` / `line` /
+  `commit` / `hash` / `kind` ∈ {`observed`, `inferred`, `recommended`} (A-12).
+- ✅ Esquema do `state.json`: checkpoint resistente a rebase/squash/force-push (A-09)
+  e `reported[]` para dedup (A-10).
+- ⛔ **Falta:** o **JSON Schema** da saída do ciclo e do `config.yml` (A-11) — é o
+  item que trava o "pronto quando" abaixo.
+- ⛔ **Falta:** gramática do intervalo, escopo (**P-02**), retenção (**P-05**),
+  concorrência e a definição de "âncora" no `hash`.
+- ⛔ **Falta:** fechar **P-08** (`.auditor/` versionado ou não) — muda o esquema de
+  estado.
 
 **Pronto quando:** um relatório de exemplo valida contra o schema, e um relatório
 propositalmente quebrado é **rejeitado**.
@@ -80,8 +88,8 @@ esperado, e o segundo ciclo sem mudança é no-op.
 
 - **T-01/T-05** — redação mecânica de segredos na saída (regex + denylist de
   caminhos); achado sobre segredo reporta `arquivo:linha`, nunca o valor.
-- **T-02** — conteúdo do repositório auditado tratado como **dado, nunca instrução**;
-  lista fechada de arquivos obedecidos, que só podem restringir permissão.
+- **T-02** — a **regra** já está escrita no prompt (ADR-009); falta o **teste**:
+  fixture com injeção plantada, que falhe com a defesa desligada.
 - **T-03** — enforcement de `write_policy` fora do modelo (deny + hook `PreToolUse`
   no Claude; gate no runner do ShvIA), com caminho normalizado.
 - **T-08** — em modo autônomo, nunca sobrescrever arquivo pré-existente.

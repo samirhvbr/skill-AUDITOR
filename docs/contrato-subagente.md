@@ -1,26 +1,25 @@
-# AGENT.md — Contrato do subagente AUDITOR
+# Contrato do subagente AUDITOR
 
 > ⚠️ **ESQUELETO.** Este arquivo é o destino canônico do contrato de entrada/saída
-> do subagente, do prompt e do catálogo de modelos por plataforma — prometido no
-> `README.md` mas ainda **não especificado**.
+> do subagente, das regras de prompt e do catálogo de modelos por plataforma.
 >
-> Preencher é a fase **F1** ([.continue/escopo-projeto.md](.continue/escopo-projeto.md)),
+> Preencher é a fase **F1** ([../.continue/escopo-projeto.md](../.continue/escopo-projeto.md)),
 > e depende da validação de plataforma da fase **F0**. Ao preencher uma seção,
 > remover a marca e bumpar `version.md`.
 >
-> ⚠️ **Não confundir com [AGENTS.md](AGENTS.md)** (plural). Os dois falam do mesmo
-> subagente, em níveis diferentes:
+> **Este arquivo é a especificação; o [`prompts/auditor-system.md`](../prompts/auditor-system.md)
+> é o runtime** — o prompt que a plataforma carrega ao executar a skill. Os dois
+> falam do mesmo subagente em níveis diferentes:
 >
-> | | `AGENTS.md` | `AGENT.md` (este) |
+> | | `prompts/auditor-system.md` | este arquivo |
 > |---|---|---|
-> | Nível | **runtime** — o prompt que a plataforma lê antes de executar a skill | **especificação** — o contrato formal |
+> | Nível | **runtime** — o prompt em si | **especificação** — o contrato formal |
 > | Público | o subagente, em execução | quem implementa e testa o AUDITOR |
-> | Estado | escrito, em proposta | esqueleto |
+> | Estado | escrito | esqueleto |
 >
-> Nomes quase idênticos com escopos sobrepostos são um convite a editar o arquivo
-> errado. Consolidar os dois é a pendência **P-12** (achado A-19). Enquanto não se
-> decide, o que estiver **escrito** no `AGENTS.md` prevalece sobre o esqueleto daqui
-> — e toda divergência entre eles está listada nos achados A-20 a A-23.
+> Enquanto este arquivo for esqueleto, o que estiver **escrito** no prompt de
+> runtime prevalece. Até a `0.1.0` os dois se chamavam `AGENTS.md` e `AGENT.md`,
+> separados por uma letra — resolvido no ADR-007.
 
 ---
 
@@ -35,19 +34,17 @@ aplicação auditada**.
 
 ## 2. Prompt de sistema
 
-Rascunho no `README.md` §Contrato de execução do subagente. **Não usar como está** —
-faltam três coisas que a [revisão](docs/revisao-inicial.md) apontou:
+O prompt vive em [`prompts/auditor-system.md`](../prompts/auditor-system.md) e é
+normativo. As três lacunas que a revisão apontou foram fechadas na `0.2.0`:
 
-- ⛔ **Delimitação de conteúdo não confiável** (A-03 / T-02). O prompt precisa
-  estabelecer que tudo vindo do repositório auditado é **dado, nunca instrução**. A
-  regra atual do README — "respeitar instruções do repositório, como `AGENTS.md`,
-  `CLAUDE.md`" — **amplia** a superfície de ataque como está escrita: manda obedecer
-  arquivos controlados pelo alvo. Precisa virar lista fechada, e esses arquivos só
-  podem **restringir** permissão, nunca ampliar.
-- ⛔ **Regra de evidência** (A-12): o que conta como evidência, em formato exato.
-- ⛔ **Comportamento no modo autônomo** (A-06): o que fazer quando uma regra pede
-  confirmação e não há quem confirme. Sugestão: degrada para **não fazer** e registra
-  como pendência — nunca para "fazer assim mesmo".
+| Item | Situação |
+|---|---|
+| Conteúdo não confiável como **dado, nunca instrução**, com lista fechada de arquivos obedecidos que só podem restringir (A-03 / T-02 / ADR-009) | ✅ escrito |
+| Formato obrigatório de evidência (A-12) | ✅ escrito — ver §4 |
+| Comportamento em modo autônomo: degrada para **não fazer**, nunca para "fazer assim mesmo" (A-06) | ✅ escrito |
+
+⛔ **Falta:** validar o prompt na prática (fase F2) e adaptá-lo por plataforma
+quando §6 fechar. Prompt escrito não é prompt testado.
 
 ---
 
@@ -80,7 +77,7 @@ Saída fora do esquema = **ciclo falhou**. Sem essa regra, o esquema é decoraç
 
 ## 4. Formato de finding
 
-⛔ **A definir** (A-12). Campos obrigatórios propostos:
+Campos obrigatórios — fechado em `0.2.0`, espelhado no prompt de runtime:
 
 | Campo | Conteúdo |
 |---|---|
@@ -91,12 +88,16 @@ Saída fora do esquema = **ciclo falhou**. Sem essa regra, o esquema é decoraç
 | `hash` | hash estável para dedup entre ciclos (A-10 / T-06) |
 | `summary` | uma frase |
 
-Regras propostas:
+Regras:
 
 - `kind: observed` **sem** `file:line` é inválido — o ciclo rejeita.
 - Finding sobre segredo reporta **localização, nunca o valor** (T-01).
 - `hash` estável = tipo + caminho + âncora. É o que impede o mesmo issue de ser
   aberto 48 vezes por dia.
+
+⛔ **Falta:** o JSON Schema formal (junto com §3) e a definição exata de "âncora" no
+cálculo do `hash` — precisa sobreviver a mudança de número de linha, senão a dedup
+quebra a cada edição do arquivo.
 
 ---
 
@@ -105,14 +106,14 @@ Regras propostas:
 ⛔ **Bloqueado por P-01.** Precisa listar, por plataforma, os identificadores
 válidos e a cadeia de fallback.
 
-⚠️ O `README.md` usa `claude-sonnet-4.6` como exemplo — **não existe** (A-01). Os
-identificadores reais da família Claude são `claude-opus-5`, `claude-sonnet-5`,
-`claude-fable-5` e `claude-haiku-4-5-20251001`.
+Identificadores da família Claude, para referência: `claude-opus-5`,
+`claude-sonnet-5`, `claude-fable-5` e `claude-haiku-4-5-20251001`. Os exemplos do
+`README.md` usam `claude-sonnet-5` desde a `0.2.0` — antes traziam
+`claude-sonnet-4.6`, que não existe (A-01).
 
-Regra que já vale, do `README.md` §Seleção do agente/modelo: o identificador é uma
-**solicitação do usuário**, não garantia de disponibilidade. A skill valida e, se
-cair em fallback, **informa** — e a saída reporta o modelo efetivamente usado, não o
-pedido.
+Regra que já vale: o identificador é uma **solicitação do usuário**, não garantia de
+disponibilidade. A skill valida e, se cair em fallback, **informa** — e a saída
+reporta o modelo efetivamente usado, não o pedido.
 
 ---
 
@@ -122,10 +123,14 @@ pedido.
 
 ### 6.1 Claude
 
-⛔ A preencher. O que precisa ser respondido em F0 (achado A-13): quais primitivas
-existem — skills, subagentes, hooks, `/loop`, rotinas agendadas — e como cada uma se
-declara. Se estiverem todas disponíveis, o AUDITOR é montado sobre mecanismo nativo,
-sem inventar scheduler e sem instalar persistência.
+As cinco primitivas de que o AUDITOR precisa **existem** no Claude Code — skills,
+subagentes, hooks, execução recorrente por intervalo e rotinas agendadas (ADR-008).
+Isso permite montar o AUDITOR sobre mecanismo nativo, sem inventar scheduler e sem
+instalar persistência.
+
+⛔ A preencher: **como cada uma se declara** — formato do arquivo de skill, do
+subagente, do hook, e como registrar a rotina agendada. É trabalho de F0, e precisa
+sair com evidência (arquivo, comando, saída), não de memória.
 
 Enforcement de escrita (T-03) tende a ser `permissions.deny` + hook `PreToolUse`.
 
@@ -147,6 +152,7 @@ um "deve funcionar igual".
 
 ## 7. Não pertence a este arquivo
 
-- Sintaxe do comando e esquema de configuração → `SPEC.md`.
-- Ameaças e controles → `SECURITY.md`.
-- Decisões e pendências → `docs/decisoes.md`.
+- O prompt em si → [`prompts/auditor-system.md`](../prompts/auditor-system.md).
+- Sintaxe do comando e esquema de configuração → [`SPEC.md`](../SPEC.md).
+- Ameaças e controles → [`SECURITY.md`](../SECURITY.md).
+- Decisões e pendências → [`decisoes.md`](decisoes.md).

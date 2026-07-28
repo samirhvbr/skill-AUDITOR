@@ -20,6 +20,46 @@ pontos, com uma semana de projeto.
 Legenda de severidade e totais: **23 achados** — 🔴 6 altos · 🟡 12 médios ·
 🔵 5 baixos.
 
+> **Este documento é o registro da revisão de 2026-07-28** e não é reescrito quando
+> um achado é resolvido. O texto de cada achado descreve o problema **como era**; a
+> tabela abaixo diz onde ele está hoje.
+
+---
+
+## Situação em `0.2.0` (2026-07-28)
+
+**18 resolvidos · 3 documentados, à espera de implementação · 2 abertos.**
+
+| # | Achado | Situação |
+|---|---|---|
+| A-01 | Identificador de modelo inválido | ✅ exemplos usam `claude-sonnet-5`; catálogo = P-01 |
+| A-02 | Eixo da autorização de scheduler | ✅ ADR-008 |
+| A-03 | Prompt injection | ✅ ADR-009 + prompt de runtime · fixtures em F3 |
+| A-04 | `write_policy` não é enforceable | 📋 documentado (README, SECURITY T-03) · gate é implementação, F3 |
+| A-05 | Segredo do diff vaza no relatório | 📋 regra no prompt · redação mecânica é implementação, F3 |
+| A-06 | Confirmação × execução autônoma | ✅ modo autônomo definido |
+| A-07 | Relatório vazio a cada ciclo | ✅ no-op quiescente definido |
+| A-08 | `.auditor/` versionado? | 🕐 aberto — **P-08** |
+| A-09 | Checkpoint órfão | ✅ regra definida (SPEC §3 + prompt) · implementação em F2 |
+| A-10 | Flood de PR/issue | ✅ `reported[]` + `hash` definidos · implementação em F5 |
+| A-11 | Contrato de saída em prosa | 🕐 parcial — campos fixados; **falta o JSON Schema** |
+| A-12 | Formato de evidência | ✅ fechado (`kind`/`file`/`line`/`commit`/`hash`) |
+| A-13 | Premissa "plataforma não agenda" | ✅ Claude confirmado (ADR-008) · **ShvIA falta**, F0 |
+| A-14 | `.auditor/` × padrão da casa | ✅ sem `.auditor/docs/`; promoção via diff · cadência = P-03 |
+| A-15 | Ambiguidade de idioma | ✅ corrigido no README |
+| A-16 | Links quebrados | ✅ resolvido |
+| A-17 | Sem licença | 🕐 aberto — **P-10** |
+| A-18 | Nome da skill | ✅ corrigido (repo `AUDITOR` · skill `auditor` · comando `/auditor`) |
+| A-19 | `AGENTS.md` × `AGENT.md` | ✅ ADR-007 — arquivos movidos |
+| A-20 | Tipo de `open_pr_issue` | ✅ enum de três valores, default `ask` |
+| A-21 | Local do `config.yml` | ✅ `.auditor/config.yml` |
+| A-22 | `summary.md` × `index.md` | ✅ `index.md` |
+| A-23 | Chave `auto_fix` | ✅ removida |
+
+⚠️ **Resolvido aqui significa "decidido e escrito", não "implementado".** A-03, A-04
+e A-05 só viram controle de verdade quando existir código e teste de regressão que
+falhe com o controle desligado — fase F3.
+
 ---
 
 ## 🔴 A-01 — `claude-sonnet-4.6` não é um identificador de modelo válido
@@ -445,28 +485,31 @@ limites.
 
 ## Prioridade sugerida
 
-1. **A-19** primeiro, porque é barato e está causando dano agora — `AGENTS.md` vs
-   `AGENT.md`. Enquanto os dois coexistirem com esses nomes, as divergências A-20 a
-   A-23 se reproduzem a cada edição.
-2. **A-20** a **A-23** — reconciliar `AGENTS.md` com o `README.md`. São contradições
-   diretas entre dois documentos normativos; qualquer implementação feita hoje sai
-   errada em pelo menos um dos dois.
-3. **A-13** — validar as primitivas do Claude Code. A resposta redesenha §Agendamento
-   e rebaixa A-02.
+> Ordem original da revisão, mantida como registro. Os itens 1, 2, 5 (parte) e 7 já
+> foram executados na `0.2.0` — ver a tabela de situação acima.
+
+1. ~~**A-19**~~ ✅ — `AGENTS.md` vs `AGENT.md`, resolvido no ADR-007.
+2. ~~**A-20** a **A-23**~~ ✅ — divergências normativas reconciliadas.
+3. **A-13** — validar as primitivas de **cada** plataforma. O Claude Code está
+   confirmado (ADR-008); o ShvIA ainda não. É o que falta para fechar o desenho.
 4. **A-03**, **A-04**, **A-05** — o trio que transforma regra de prompt em controle
-   real. Bloqueiam qualquer execução em repositório que não seja de teste.
-5. **A-11** + **A-12** — esquema de saída e formato de evidência. São o que torna
-   o resto testável.
-6. **A-08** + **A-09** — modelo de estado. Barato agora, caro depois.
-7. **A-01**, **A-15**, **A-16**, **A-18** — correções de texto no `README.md`.
-8. O resto conforme as fases de `.continue/escopo-projeto.md`.
+   real. Decididos e escritos; viram controle só com código e teste de regressão
+   (F3). **Bloqueiam qualquer execução em repositório que não seja de teste.**
+5. **A-11** — falta o JSON Schema da saída. ~~A-12~~ ✅ (formato de evidência
+   fechado). É o que torna o resto testável.
+6. **A-08** — `.auditor/` versionado ou não (P-08). ~~A-09~~ ✅ (regra do checkpoint
+   definida; falta implementar).
+7. ~~**A-01**, **A-15**, **A-16**, **A-18**~~ ✅ — correções de texto aplicadas.
+8. O resto conforme as fases de [.continue/escopo-projeto.md](../.continue/escopo-projeto.md).
 
 ---
 
 ## O que a revisão **não** cobriu
 
 - Nenhuma execução foi feita — não há o que executar.
-- Nenhuma validação contra a API/plataforma real (Claude ou ShvIA). Tudo em A-13 e
-  A-01 é **inferência** a partir de documentação e da configuração da casa, e
-  precisa de confirmação empírica.
+- Nenhuma validação contra o **ShvIA**. O que o ADR-008 afirma sobre as primitivas
+  vale para o **Claude Code**, constatado a partir das capacidades disponíveis na
+  sessão de 2026-07-28. O equivalente no ShvIA segue como **inferência** e precisa de
+  confirmação empírica (F0).
 - Integração com o gateway ShvIA não foi analisada (o código vive em `SHVIA-WEB`).
+- Nenhum dos controles de segurança foi testado — não existe código para testar.

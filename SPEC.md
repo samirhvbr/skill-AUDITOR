@@ -1,15 +1,20 @@
 # SPEC.md — Comando e configuração do AUDITOR
 
-> ⚠️ **ESQUELETO.** Este arquivo é o destino canônico da sintaxe do comando e do
-> esquema de configuração, prometido cinco vezes no `README.md` — mas o conteúdo
-> ainda **não foi especificado**. As seções abaixo estão na ordem final; cada lacuna
-> marca a pendência que a bloqueia.
+> ⚠️ **PARCIAL.** Este arquivo é o destino canônico da sintaxe do comando e do
+> esquema de configuração. As seções estão na ordem final; o que está fechado vem
+> sem marca, e cada lacuna restante é marcada com ⛔ e a pendência que a bloqueia.
 >
-> Preencher é a fase **F1** ([.continue/escopo-projeto.md](.continue/escopo-projeto.md)).
-> Ao preencher uma seção, remover a marca e bumpar `version.md`.
+> Completar é a fase **F1** ([.continue/escopo-projeto.md](.continue/escopo-projeto.md)).
+> Ao fechar uma seção, remover a marca e bumpar `version.md`.
 >
-> **O que já está decidido** vive em [docs/decisoes.md](docs/decisoes.md) — ADR-005
-> (sintaxe) e ADR-006 (unidade obrigatória) são a base do §1 e §2.
+> **Fechado até aqui:** localização e defaults do `config.yml` (§2), esquema do
+> `state.json` (§3), estrutura de `.auditor/` (§4), no-op quiescente e modo autônomo
+> (§5). **Falta:** gramática do intervalo, JSON Schema, escopo (P-02), retenção
+> (P-05) e concorrência.
+>
+> **Decisões** vivem em [docs/decisoes.md](docs/decisoes.md) — ADR-003 (PR/issue),
+> ADR-005 (sintaxe), ADR-006 (unidade), ADR-008 (scheduler) e ADR-009 (conteúdo não
+> confiável) são a base deste documento.
 
 ---
 
@@ -37,9 +42,12 @@ Repositório `AUDITOR` (maiúsculo, padrão da casa) · skill `auditor` · coman
 
 ### 1.4 Subcomandos
 
-⛔ **A definir.** No mínimo é preciso existir um `uninstall` — T-04 do `SECURITY.md`
-exige desinstalação do gatilho em um comando. Candidatos: `status`, `run` (ciclo
-avulso), `uninstall`.
+`/auditor uninstall` é **obrigatório** — T-04 do `SECURITY.md` exige que todo gatilho
+instalado seja removível em um passo, e o comando reporta o que não conseguiu
+remover.
+
+⛔ **A definir:** o resto da lista. Candidatos: `status` (mostra config, estado e
+gatilho ativo) e `run` (ciclo avulso, sem mexer no agendamento).
 
 ### 1.5 Gramática do intervalo *(base decidida em ADR-006)*
 
@@ -58,77 +66,129 @@ modelo pedido não existe na plataforma — erro ou fallback declarado?
 
 ## 2. `.auditor/config.yml`
 
+**Localização: `.auditor/config.yml`**, dentro do diretório do AUDITOR no
+repositório auditado — não na raiz. Mantém tudo do AUDITOR sob um diretório e evita
+que a configuração se confunda com arquivos do projeto auditado (A-21).
+
 ### 2.1 Chaves
 
-Base conceitual do `README.md` §Seleção do agente/modelo:
+| Chave | Papel | Default | Situação |
+|---|---|---|---|
+| `agent` | papel especializado (ex.: `documentation-auditor`) | `documentation-auditor` | conceitual |
+| `model` | identificador da plataforma alvo | — | ⛔ catálogo em **P-01** |
+| `interval` | duração (`30m`, `1h`) | — | ADR-006; gramática em §1.5 |
+| `language` | idioma dos artefatos | `en-US` | fechado |
+| `scope` | arquivos e branches | — | ⛔ bloqueado por **P-02** |
+| `write_policy` | v1: apenas `.auditor/` | `auditor-only` | ⚠️ **não é enforceable por prompt** — A-04 / T-03 |
+| `open_pr_issue` | `off` / `ask` / `always` | **`ask`** | fechado — ADR-003 |
+| `state_source` | origem do estado (`git`) | `git` | ⛔ bloqueado por **P-08** |
+| `auto_scheduler` | autoriza instalar gatilho | **`false`** | fechado — ADR-008 |
+| `retain_days` | retenção de relatórios | — | ⛔ bloqueado por **P-05** |
+| `cost_cap` | teto de custo por ciclo/dia | — | ⛔ a definir — T-07 |
 
-| Chave | Papel | Situação |
-|---|---|---|
-| `agent` | papel especializado (ex.: `documentation-auditor`) | conceitual |
-| `model` | identificador da plataforma alvo | ⛔ bloqueado por **P-01** (ver A-01) |
-| `interval` | duração (`30m`, `1h`) | base em ADR-006, gramática pendente |
-| `language` | idioma dos artefatos — `en-US` | ver A-15 |
-| `scope` | arquivos e branches | ⛔ bloqueado por **P-02** |
-| `write_policy` | v1: apenas `.auditor/` | ⚠️ **não é enforceable por prompt** — A-04 / T-03 |
-| `open_pr_issue` | `off` / `ask` / `always` | decidido em ADR-003 |
-| `state_source` | origem do estado (`git`) | ⛔ bloqueado por **P-08** |
-| `auto_scheduler` | instalar gatilho | ⚠️ ADR-004 **em revisão** — default `false` até A-13 |
-| `retain_days` | retenção de relatórios | ⛔ bloqueado por **P-05** |
-| `cost_cap` | teto de custo por ciclo/dia | ⛔ a definir — T-07 |
+Notas normativas:
+
+- `open_pr_issue: always` só é válido com redação de segredos e deduplicação de
+  achados ativas. Sem as duas, degrada para `ask`.
+- `auto_scheduler: true` **não** depende da plataforma: vale como autorização do dono
+  do repositório auditado, e só isso (ADR-008). Rodar em ShvIA não altera o default.
+- Nenhuma chave deste arquivo pode **ampliar** o que a invocação concedeu — só
+  restringir (ADR-009). Configuração que pede mais é ignorada e vira achado.
 
 ### 2.2 Defaults
 
-⛔ **A definir.** Regra de partida sugerida: **todo default é o mais restritivo** —
-`open_pr_issue: ask`, `auto_scheduler: false`, `write_policy: auditor-only`.
+**Todo default é o mais restritivo**: `open_pr_issue: ask`, `auto_scheduler: false`,
+`write_policy: auditor-only`, `language: en-US`. Ausência do arquivo não é erro — a
+skill roda nos defaults e **registra a ausência** no relatório.
 
 ### 2.3 Esquema formal
 
 ⛔ **A definir.** JSON Schema, para validar o arquivo antes de rodar o ciclo.
+Configuração inválida aborta o ciclo com mensagem acionável; não cai em default
+silenciosamente.
 
 ---
 
 ## 3. `.auditor/state.json`
 
-⛔ **A definir.** Requisitos já levantados que o esquema precisa atender:
+Campos obrigatórios — fechados em `0.2.0`:
 
-- **Checkpoint resistente** (A-09): guardar SHA **e** data. SHA que não existe mais
-  (rebase, squash, force-push) degrada para janela temporal, com a degradação
-  declarada no relatório.
-- **Hash estável de finding** (A-10 / T-06): tipo + caminho + âncora, para dedup
-  entre ciclos — sem isso, PR/issue viram flood.
-- **`last_checked` separado de `last_audited`** (A-07): ciclo no-op atualiza só o
-  primeiro.
-- ⛔ **P-08** define se este arquivo é versionado, local ou derivado de fonte
-  compartilhada (tag/nota git).
+| Campo | Papel |
+|---|---|
+| `last_sha` | commit do último ciclo **auditado** |
+| `last_run` | data/hora do último ciclo auditado — base do fallback temporal |
+| `last_checked` | data/hora da última verificação, inclusive ciclos no-op |
+| `reported[]` | `hash` dos achados já reportados, para dedup entre ciclos |
+
+Regras:
+
+- **Checkpoint resistente** (A-09): validar `last_sha` antes de usar
+  (`git cat-file -e`). Se não existir mais — rebase, squash, force-push — usar a
+  janela desde `last_run` e **declarar a degradação** no relatório.
+- **No-op não move o checkpoint** (A-07): ciclo sem mudança atualiza só
+  `last_checked`.
+- **Falha parcial não move o checkpoint** do escopo que não foi auditado.
+- `reported[]` é o que impede o mesmo achado de virar issue novo a cada ciclo
+  (A-10 / T-06). Cresce indefinidamente — a política de poda entra junto com
+  `retain_days` (P-05).
+
+⛔ **P-08** define se este arquivo é versionado, local ou derivado de fonte
+compartilhada (tag/nota git). É a decisão que falta para fechar o esquema.
 
 ---
 
 ## 4. Estrutura de `.auditor/`
 
-Proposta em `README.md` §Estrutura proposta de `.auditor`. Antes de fixar, resolver
-o achado **A-14**: `.auditor/docs/` se sobrepõe a `docs/` e `.auditor/index.md` se
-sobrepõe a `.continue/estado-atual.md` nos repositórios da casa.
+```text
+.auditor/
+├── config.yml       # §2
+├── state.json       # §3
+├── scheduler.json   # gatilho instalado, com o comando de remoção (T-04)
+├── index.md         # índice cumulativo dos ciclos, achados e decisões
+├── reports/         # YYYY-MM-DD-HHMM.md, um por ciclo com mudança
+└── findings/        # lacunas e recomendações pendentes
+```
 
-Direção sugerida (não decidida): `.auditor/` guarda **achados e estado** — o que é
-do robô — e nunca documentação final. O que for promovido a doc oficial vira
-**proposta de diff** para `docs/`, revisada por humano.
+Decisões desta seção:
+
+- **`index.md`, não `summary.md`** — um único arquivo cumulativo, atualizado e nunca
+  recriado (A-22).
+- **Sem `.auditor/docs/`** — `.auditor/` guarda **achados e estado**, o que é do
+  robô, e nunca documentação final. Nos repositórios da casa já existem `docs/`,
+  `.continue/` e `version.md`; um quarto autor escrevendo sobre os mesmos assuntos
+  diverge (A-14). O que for promovido a documentação oficial vira **proposta de diff
+  para `docs/`**, revisada por humano.
+
+⛔ **A definir:** a cadência e o formato dessa promoção (**P-03**).
 
 ---
 
 ## 5. Ciclo de vida
 
-Fluxo em 10 passos no `README.md` §Fluxo de um ciclo. Falta especificar:
+Fluxo em 10 passos no `README.md` §Fluxo de um ciclo.
 
-- ⛔ **No-op quiescente** (A-07): condição exata e o que é atualizado no estado.
-- ⛔ **Falha parcial**: o que é registrado, o que continua, o que aborta.
-- ⛔ **Concorrência**: dois ciclos disparados juntos — lock, ou o segundo desiste?
-- ⛔ **Modo autônomo vs interativo** (A-06): toda regra que diz "pedir confirmação"
-  precisa de comportamento definido no modo em que não há quem confirme.
+**No-op quiescente** (A-07) — fechado: se não há mudança entre o checkpoint e `HEAD`,
+o ciclo não escreve relatório, não abre PR/issue, não toca `last_sha` e atualiza só
+`last_checked`. Encerra com resumo de uma linha.
+
+**Modo autônomo** (A-06) — fechado: sem ninguém para confirmar, toda regra que
+pediria confirmação degrada para **não fazer**, e o item vai para
+`pending_decisions`. Nunca degrada para "fazer assim mesmo". Escrita autônoma nunca
+sobrescreve arquivo pré-existente.
+
+⛔ **A definir:**
+
+- **Falha parcial**: o que é registrado, o que continua, o que aborta. Regra já
+  fixada: não mover o checkpoint de escopo não auditado.
+- **Concorrência**: dois ciclos disparados juntos — lock, ou o segundo desiste?
+- **Tetos de custo** (T-07): valores default e comportamento exato do kill-switch.
 
 ---
 
 ## 6. Não pertence a este arquivo
 
-- Contrato do subagente, prompt, catálogo de modelos → `AGENT.md`.
-- Ameaças e controles → `SECURITY.md`.
-- Decisões e pendências → `docs/decisoes.md`.
+- Contrato do subagente e catálogo de modelos →
+  [`docs/contrato-subagente.md`](docs/contrato-subagente.md).
+- O prompt de runtime → [`prompts/auditor-system.md`](prompts/auditor-system.md).
+- Ameaças e controles → [`SECURITY.md`](SECURITY.md).
+- Decisões e pendências → [`docs/decisoes.md`](docs/decisoes.md).
