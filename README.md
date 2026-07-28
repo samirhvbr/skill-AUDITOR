@@ -2,7 +2,7 @@
 
 Skill para executar um subagente de auditoria de código em ciclos periódicos, identificar mudanças recentes sem documentação suficiente e registrar a documentação produzida no diretório `.auditor`.
 
-> Status: proposta inicial. A sintaxe, o mecanismo de agendamento e o suporte a modelos ainda precisam ser validados na plataforma de execução.
+> Status: proposta em evolução. Decisões parcialmente fechadas: plataformas-alvo (Claude e ShvIA, com OpenAI descartado da primeira versão), permissão de abrir PR/issue, e política de scheduler (criar o gatilho automaticamente quando não houver spec, ao menos em SHVIA, onde há controle do mantenedor). Sintaxe de comando, identificadores exatos de modelo, escopo, retenção e demais pontos seguem em validação na `SPEC.md`.
 
 ## Objetivo
 
@@ -18,36 +18,45 @@ A cada ciclo configurado, o AUDITOR deve:
 
 O AUDITOR deve documentar o sistema sem alterar a lógica da aplicação, salvo se uma futura configuração permitir explicitamente correções automáticas.
 
-## Exemplo de uso proposto
+## Exemplo de uso (ilustrativo)
+
+> **Atenção:** este bloco é **meramente ilustrativo** e precisa ser validado. A sintaxe, os identificadores de modelo e o mecanismo de agendamento ainda não foram confirmados na plataforma alvo — qualquer ajuste pode ser necessário antes do uso real.
 
 ```text
-/auditor 30 m2.7
+/auditor 30m claude-sonnet-4.6
 ```
 
 Interpretação pretendida:
 
 - `auditor`: ativa ou configura a skill;
-- `30`: intervalo entre ciclos;
-- `m2.7`: modelo/agente solicitado, neste exemplo MiniMax 2.7.
+- `30m`: intervalo entre ciclos, com unidade explícita;
+- `claude-sonnet-4.6`: identificador do modelo solicitado (placeholder; ver `AGENT.md`).
 
-A unidade do intervalo deve ser explícita para evitar ambiguidade. Recomenda-se aceitar:
-
-```text
-/auditor every 30m model m2.7
-```
-
-E, opcionalmente, manter a forma curta como atalho:
+A unidade do intervalo deve ser explícita para evitar ambiguidade. Recomenda-se aceitar a forma longa como forma canônica:
 
 ```text
-/auditor 30m m2.7
+/auditor every 30m model claude-sonnet-4.6
 ```
+
+E manter a forma curta apenas como atalho documentado:
+
+```text
+/auditor 30m claude-sonnet-4.6
+```
+
+`30` sem unidade **não** deve ser aceito na primeira versão para evitar ambiguidade.
+
+> A especificação canônica do comando, dos placeholders e do arquivo de configuração será consolidada em `SPEC.md`.
 
 ## Plataformas e idioma
 
-- Plataformas-alvo: Claude, OpenAI e ShvIA.
+- Plataformas-alvo da primeira versão: **Claude** e **ShvIA**. OpenAI foi descartado do escopo inicial.
+- ShvIA é uma plataforma sob autoria e controle do mantenedor; pode ser customizada conforme a necessidade do AUDITOR (prompt, contrato de saída, scheduler, etc.).
 - Idioma principal dos artefatos: inglês dos EUA (`en-US`).
 - O relatório apresentado ao usuário pode seguir o idioma da conversa.
 - O nome da skill é `AUDITOR`.
+
+> O contrato detalhado do agente, o identificador de modelo em cada plataforma, o mapeamento de fallbacks e a integração com ShvIA serão detalhados em `AGENT.md`. A sintaxe canônica do comando ficará em `SPEC.md`.
 
 ## Escopo da primeira versão
 
@@ -117,30 +126,46 @@ A skill não deve presumir que o modelo consiga executar sozinho em segundo plan
 - processo controlador que invoca a skill;
 - comando manual repetido.
 
-O intervalo de 30 minutos deve ser tratado como configuração, não como garantia de execução. Se não houver scheduler disponível, `/auditor 30m m2.7` deve configurar o intervalo e informar como a execução será disparada.
+**Política quando não houver scheduler disponível:** o AUDITOR deve tentar instalar um gatilho automaticamente, registrando-o de forma explícita e reversível. Em plataformas onde o mantenedor tem controle (caso de **SHVIA**, onde ShvIA é uma plataforma sob sua autoria), a instalação automática do gatilho é parte do comportamento padrão da skill, desde que não haja uma spec contrária no projeto auditado. Em plataformas de terceiros (ex.: Claude), a instalação automática deve ser feita apenas com confirmação explícita do usuário.
+
+O intervalo (ex.: `30m`) deve ser tratado como configuração, não como garantia de execução. Se mesmo assim não houver como instalar scheduler, `/auditor 30m <model>` deve configurar o intervalo e informar claramente como a execução será disparada.
 
 ## Seleção do agente/modelo
 
 A configuração deve separar:
 
 - `agent`: papel especializado, por exemplo `documentation-auditor`;
-- `model`: identificador compatível com a plataforma, por exemplo `m2.7`;
+- `model`: identificador compatível com a plataforma alvo (Claude ou ShvIA);
 - `interval`: duração, por exemplo `30m`;
 - `scope`: escopo de arquivos e branches;
-- `write_policy`: permissão de escrita, inicialmente apenas `.auditor`.
+- `write_policy`: permissão de escrita — na primeira versão, apenas `.auditor`; PR/issue são permitidos apenas sob confirmação ou política explícita.
 
-Exemplo conceitual:
+Exemplo conceitual (Claude):
 
 ```yaml
 agent: documentation-auditor
-model: m2.7
+model: claude-sonnet-4.6
 interval: 30m
 language: en-US
 write_policy: auditor-only
+open_pr_issue: ask
 state_source: git
 ```
 
-`m2.7` deve ser considerado um identificador solicitado pelo usuário, não uma garantia de que todas as plataformas terão esse modelo. A skill deve validar a disponibilidade e informar claramente quando houver fallback.
+Exemplo conceitual (ShvIA — sob autoria do mantenedor, customizável):
+
+```yaml
+agent: documentation-auditor
+model: shvia-v1   # placeholder; ver AGENT.md
+interval: 30m
+language: en-US
+write_policy: auditor-only
+open_pr_issue: ask
+state_source: git
+auto_scheduler: true   # permitido por padrão em ShvIA; ver seção Agendamento
+```
+
+O identificador de modelo deve ser considerado uma **solicitação do usuário**, não uma garantia de que a plataforma o oferece. A skill deve validar a disponibilidade e informar claramente quando houver fallback. O catálogo de modelos válidos por plataforma, fallbacks e regras de prompt vivem em `AGENT.md`.
 
 ## Regras de segurança e qualidade
 
@@ -151,8 +176,9 @@ state_source: git
 - Manter histórico dos ciclos.
 - Tornar a execução idempotente quando possível.
 - Registrar falhas parciais e continuar apenas em escopos seguros.
-- Respeitar instruções do repositório, como `AGENTS.md`, `CLAUDE.md` ou equivalentes.
+- Respeitar instruções do repositório, como `AGENTS.md`, `CLAUDE.md`, `AGENT.md` ou equivalentes.
 - Tratar código não versionado com uma estratégia explícita, caso o Git não esteja disponível.
+- **Permissões de escrita:** por padrão, o agente escreve apenas em `.auditor/`. Abrir PR e/ou issue é permitido, preferencialmente sob confirmação do usuário; quando não houver confirmação possível (execução autônoma via scheduler), o agente deve respeitar a política `open_pr_issue` definida na configuração (`off`, `ask`, `always`).
 
 ## Fluxo de um ciclo
 
@@ -177,33 +203,38 @@ state_source: git
 - Falhas de modelo, scheduler ou Git são comunicadas de forma acionável.
 - O comportamento é consistente nas plataformas suportadas ou possui adaptadores explícitos.
 
+## Decisões já fechadas
+
+1. **Plataformas da primeira versão:** Claude e ShvIA (OpenAI descartado).
+2. **ShvIA:** plataforma sob autoria do mantenedor, customizável.
+3. **Abertura de PR/issue:** permitida, regida por `open_pr_issue` (`off` / `ask` / `always`).
+4. **Política de scheduler:** quando não houver spec/scheduler, o AUDITOR deve tentar instalar o gatilho automaticamente, com registro explícito e reversível. Em **ShvIA** isso é o comportamento padrão; em outras plataformas exige confirmação do usuário.
+5. **Formato do comando:** aceitar forma canônica longa (`/auditor every <interval> model <model>`) e forma curta apenas como atalho (`/auditor <interval> <model>`).
+6. **Intervalo sem unidade:** não aceitar `30` solto; exigir unidade explícita (ex.: `30m`, `1h`).
+
 ## Decisões ainda necessárias
 
-Antes da implementação, definir:
-
-1. O formato oficial do comando: curto, longo ou ambos.
-2. Se `30` sem unidade será aceito.
-3. O identificador real do modelo MiniMax e os fallbacks.
-4. Qual componente dispara a execução a cada 30 minutos.
-5. Se o escopo é o repositório inteiro ou somente mudanças versionadas.
-6. Se documentação criada em `.auditor` deve ser consolidada depois em `docs/` ou no README.
-7. Como lidar com branches, merge commits e arquivos não rastreados.
-8. Se o agente pode abrir issues, pull requests ou somente escrever `.auditor`.
-9. Retenção dos relatórios e política para dados sensíveis.
+1. Identificador real e catálogo de modelos válidos para Claude e para ShvIA (com fallbacks).
+2. Se o escopo é o repositório inteiro ou somente mudanças versionadas (Git) na primeira versão.
+3. Se documentação criada em `.auditor` deve ser consolidada depois em `docs/` ou no README, e em qual cadência.
+4. Como lidar com branches, merge commits e arquivos não rastreados na detecção de mudanças.
+5. Retenção dos relatórios e política para dados sensíveis (ex.: `retain_days`, redação de segredos).
+6. Onde o scheduler/hook instalado pelo AUDITOR deve persistir e como ele é desinstalado.
+7. Contrato exato de entrada/saída entre o AUDITOR e cada plataforma (Claude vs. ShvIA).
 
 ## Próximos passos sugeridos
 
-1. Escolher a especificação oficial do comando e do arquivo de configuração.
-2. Definir o contrato de entrada/saída do subagente.
-3. Escolher um primeiro adaptador de plataforma, em vez de implementar Claude, OpenAI e ShvIA simultaneamente.
-4. Criar um executor local que faça um ciclo manual reproduzível.
-5. Implementar o estado e a detecção de mudanças.
-6. Implementar a escrita segura em `.auditor`.
-7. Adicionar testes com um repositório de exemplo contendo mudanças documentadas e não documentadas.
-8. Integrar um scheduler externo e testar reinicialização, falhas e execução duplicada.
-9. Criar adaptadores para as demais plataformas.
-10. Definir versionamento, distribuição e instalação da skill.
+1. Consolidar a sintaxe canônica do comando e o esquema do arquivo de configuração em `SPEC.md`.
+2. Definir o contrato de entrada/saída do subagente por plataforma em `AGENT.md` (Claude e ShvIA).
+3. Implementar o adaptador ShvIA primeiro (controle total do mantenedor) e o adaptador Claude em paralelo como referência.
+4. Criar um executor local que faça um ciclo manual reproduzível (CLI ou script), útil para testes e CI.
+5. Implementar o estado (`state.json`) e a detecção de mudanças com base em Git.
+6. Implementar a escrita segura em `.auditor`, respeitando `write_policy` e `open_pr_issue`.
+7. Implementar a política de scheduler: instalar gatilho automaticamente quando ausente, com registro e reversibilidade (especialmente em ShvIA).
+8. Adicionar testes com um repositório de exemplo contendo mudanças documentadas e não documentadas.
+9. Definir versionamento, distribuição e instalação da skill (registro em `AGENTS.md` / `CLAUDE.md` / `AGENT.md` da plataforma).
+10. Documentar retenção, redação de segredos e política de dados sensíveis.
 
 ## Limitação importante
 
-Uma skill ou prompt, por si só, normalmente não garante execução autônoma a cada 30 minutos. Para isso, é necessário um mecanismo de agendamento autorizado pela plataforma ou pelo ambiente. O projeto deve separar claramente a lógica do AUDITOR do componente responsável por dispará-lo.
+Uma skill ou prompt, por si só, normalmente não garante execução autônoma em intervalos definidos. A diferença do AUDITOR é que, **quando a plataforma o permitir**, ele próprio tenta instalar o gatilho de agendamento e registrá-lo de forma reversível — em ShvIA isso é o comportamento padrão por se tratar de uma plataforma sob autoria do mantenedor; em outras plataformas isso exige confirmação. De qualquer forma, o projeto mantém separação clara entre a lógica do AUDITOR e o componente responsável por dispará-lo, para que a skill continue útil mesmo em ambientes sem scheduler.
