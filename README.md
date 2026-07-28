@@ -2,6 +2,27 @@
 
 Skill para executar um subagente de auditoria de código em ciclos periódicos, identificar mudanças recentes sem documentação suficiente e registrar a documentação produzida no diretório `.auditor`.
 
+> **Documentação:** [CLAUDE.md](CLAUDE.md) (regras de quem desenvolve este repo) ·
+> [AGENTS.md](AGENTS.md) (prompt de runtime do subagente) ·
+> [SECURITY.md](SECURITY.md) (modelo de ameaça — leitura obrigatória) ·
+> [SPEC.md](SPEC.md) e [AGENT.md](AGENT.md) (contratos, **esqueletos**) ·
+> [docs/README.md](docs/README.md) (índice técnico) ·
+> [docs/decisoes.md](docs/decisoes.md) (ADRs e pendências) ·
+> [docs/revisao-inicial.md](docs/revisao-inicial.md) (**23 achados** sobre esta proposta) ·
+> [version.md](version.md) (versão e formato de commit) ·
+> [.continue/estado-atual.md](.continue/estado-atual.md) (onde o projeto está).
+>
+> ⚠️ A [revisão inicial](docs/revisao-inicial.md) aponta correções pendentes **neste
+> arquivo**: o identificador `claude-sonnet-4.6` dos exemplos não existe (A-01), a
+> política de auto-instalação de scheduler está no eixo errado (A-02), o modelo de
+> ameaça não cobre prompt injection vinda do repositório auditado (A-03) e a premissa
+> de que a plataforma não agenda está desatualizada para o Claude Code (A-13).
+>
+> ⚠️ Este arquivo e o [AGENTS.md](AGENTS.md) **divergem** em quatro pontos
+> normativos (A-20 a A-23): tipo de `open_pr_issue`, local do `config.yml`, nome do
+> resumo cumulativo e a chave `auto_fix`. Tabela em
+> [docs/decisoes.md](docs/decisoes.md#divergências-normativas-abertas).
+
 > Status: proposta em evolução. Decisões parcialmente fechadas: plataformas-alvo (Claude e ShvIA, com OpenAI descartado da primeira versão), permissão de abrir PR/issue, e política de scheduler (criar o gatilho automaticamente quando não houver spec, ao menos em SHVIA, onde há controle do mantenedor). Sintaxe de comando, identificadores exatos de modelo, escopo, retenção e demais pontos seguem em validação na `SPEC.md`.
 
 ## Objetivo
