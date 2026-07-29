@@ -102,6 +102,18 @@ class TestDoesNotOverRedact(unittest.TestCase):
         text = "falta documentar STRIPE_SECRET_KEY no .env.example"
         self.assertEqual(redact(text)[0], text)
 
+    def test_parser_code_with_tokens_variable_survives(self) -> None:
+        """Falso positivo real do dogfood do skill-COMMITTER (29/07): variavel
+        `tokens` recebendo expressao de codigo. Valor com parenteses e codigo,
+        nao segredo — segredo real (AWS, JWT, base64, hex) nao contem ()."""
+        for text in (
+            'tokens = out.split("\\0")',
+            "token = parse_line(raw)",
+            "ACCESS_KEYS = load_keys(path)",
+        ):
+            with self.subTest(text=text):
+                self.assertEqual(redact(text)[0], text)
+
 
 class TestSensitivePaths(unittest.TestCase):
     def test_flags_secret_bearing_files(self) -> None:

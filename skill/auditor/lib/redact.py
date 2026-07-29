@@ -92,12 +92,21 @@ _RULES: list[tuple[str, re.Pattern[str], int]] = [
             )
             (\s*[:=]\s*)
             (["']?)
-            ([^\s"'#,;]{6,})
+            ([^\s"'#,;()]{6,})
+            (?![^\s"'#,;])
             \3
             """
         ),
         None,  # tratamento especial: preserva nome + separador
     ),
+    # Valor sem parenteses + lookahead de fronteira, de proposito: formato real
+    # de segredo (AWS, JWT, base64, hex, DSN) nao contem "()"; expressao de
+    # codigo contem. So excluir da classe nao basta — o motor casaria um PREFIXO
+    # do valor (`out.spl` em `tokens = out.split("\0")`); o lookahead exige que o
+    # valor termine numa fronteira legitima. Falso positivo achado no dogfood do
+    # skill-COMMITTER (29/07), onde o scan vendorizado bloquearia o proprio
+    # arquivo do ciclo para sempre. Manter em sincronia com
+    # skill-COMMITTER/skill/committer/secret_scan.py.
 ]
 
 # Caminhos que nunca sao citados literalmente num artefato. O achado reporta que o

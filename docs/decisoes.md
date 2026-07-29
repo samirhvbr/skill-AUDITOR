@@ -235,6 +235,7 @@ foram levantadas na [revisão inicial](revisao-inicial.md).
 | **P-09** | Stack do executor/harness (só os controles estão em Python) | Implementação | — |
 | **P-10** | Licença e formato de distribuição da skill | Publicação | A-17 |
 | **P-11** | Gatilho por relógio, por atividade (hook) ou os dois | Desenho | A-07 |
+| **P-12** | Auth da execução headless: `subscription` / `api-key` dedicada / gateway ShvIA (`ANTHROPIC_BASE_URL` + `shvia_usr_…`, auditoria no painel). Espelho do **ADR-008 do skill-COMMITTER** — aqui afeta o ciclo inteiro, não só um fallback; chave nunca em arquivo versionado | Executor | — |
 
 **Resolvidas:** P-12 pelo ADR-007 (28/07) · **P-08 pelo ADR-010** (29/07) ·
 P-07 parcialmente, pelo adaptador Claude em `skill/auditor/` — falta o ShvIA.

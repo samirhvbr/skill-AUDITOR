@@ -1,6 +1,6 @@
 # Versão — AUDITOR
 
-**Versão atual:** `0.3.0`
+**Versão atual:** `0.3.1`
 
 > Este arquivo é a **fonte da verdade** da versão do projeto. Qualquer lugar que
 > precise exibir ou reportar a versão (skill, CLI, relatório de ciclo, pacote de
@@ -89,6 +89,30 @@ entrega). Commits adicionais da mesma entrega repetem a versão sem novo bump.
 
 > Ordem decrescente (mais recente no topo). Cada entrada lista as mudanças e os
 > gatilhos que justificaram o bump.
+
+### `0.3.1` — 2026-07-29 — Redação: fim do falso positivo em código de parser; P-12 registrada
+
+O dogfood do **skill-COMMITTER** (que vendoriza os padrões daqui) achou um falso
+positivo de classe no `assigned-secret`: `tokens = out.split("\0")` — variável
+`tokens` recebendo expressão de código — casava o padrão, e lá isso **bloquearia o
+próprio arquivo do ciclo para sempre** (ADR-005 de lá exclui o arquivo inteiro).
+
+**Correção** (`skill/auditor/lib/redact.py`, fonte da verdade dos padrões)
+- Valor do `assigned-secret` não aceita `()` **e** ganha lookahead de fronteira:
+  expressão de código tem parêntese, segredo real (AWS/JWT/base64/hex/DSN) não.
+  Só excluir da classe não bastava — o motor casava um **prefixo** do valor
+  (`out.spl`). Teste de regressão novo (3 variantes de linha de parser); suíte em
+  **44**. Sincronizado com `skill-COMMITTER/skill/committer/secret_scan.py`.
+
+**Decisões**
+- **P-12** registrada: auth da execução headless (`subscription` / `api-key` /
+  gateway ShvIA) — espelho do ADR-008 do skill-COMMITTER; aqui afeta o ciclo
+  inteiro. Da pergunta do Samir sobre rodar as skills por API key.
+
+_Gatilhos:_ mudança de comportamento da redação (política de segurança) + pendência
+nova de direção.
+
+---
 
 ### `0.3.0` — 2026-07-29 — Primeiro código: `.auditor/` versionado, esquemas e os dois controles
 
