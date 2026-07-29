@@ -1,6 +1,6 @@
 # Versão — AUDITOR
 
-**Versão atual:** `0.3.1`
+**Versão atual:** `0.3.2`
 
 > Este arquivo é a **fonte da verdade** da versão do projeto. Qualquer lugar que
 > precise exibir ou reportar a versão (skill, CLI, relatório de ciclo, pacote de
@@ -89,6 +89,13 @@ entrega). Commits adicionais da mesma entrega repetem a versão sem novo bump.
 
 > Ordem decrescente (mais recente no topo). Cada entrada lista as mudanças e os
 > gatilhos que justificaram o bump.
+
+### `0.3.2` — 2026-07-29 — Adota o COMMITTER: marcador de opt-in para o ciclo automático de commit
+
+- `.committer.yml` na raiz — opt-in explícito (sem marcador o repo não existe para
+  a skill). `branch_only: master` limita o ciclo à branch de trabalho.
+- A varredura é do `~/x/GIT/run.sh` (cron de 30 min), que descobre os
+  participantes pelo marcador em vez de lista fixa de caminhos.
 
 ### `0.3.1` — 2026-07-29 — Redação: fim do falso positivo em código de parser; P-12 registrada
 
