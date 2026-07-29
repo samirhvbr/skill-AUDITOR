@@ -50,11 +50,24 @@ quando §6 fechar. Prompt escrito não é prompt testado.
 
 ## 3. Contrato de saída
 
-O `README.md` lista nove itens que o agente "deve retornar, no mínimo" — em prosa.
-Prosa não é verificável: não dá para validar saída, escrever teste, nem detectar um
-ciclo que retornou lixo (A-11).
+Esquema formal: [`schemas/cycle-report.schema.json`](../schemas/cycle-report.schema.json).
 
-⛔ **A definir: JSON Schema.** Campos derivados da lista do README:
+Saída fora do esquema = **ciclo falhou**. Sem essa regra, o esquema é decoração.
+
+Além dos campos, o esquema carrega três regras condicionais que não caberiam em
+prosa:
+
+- `kind: observed` **exige** `file` e `line` — é o que torna "não invente"
+  verificável (A-12).
+- `range.mode: time-window` **exige** `degraded_reason` — degradação silenciosa por
+  checkpoint órfão fica impossível de representar.
+- `status: no-op` **proíbe** achados e artefatos — o ciclo quiescente não pode
+  "acidentalmente" escrever.
+
+E `artifacts_written` só aceita caminho começando em `.auditor/`: escrita fora do
+escopo não é representável numa saída válida.
+
+Campos:
 
 | Campo | Conteúdo |
 |---|---|
@@ -70,14 +83,20 @@ ciclo que retornou lixo (A-11).
 | `pending_decisions` | itens que exigem decisão do usuário |
 | `next_checkpoint` | próximo ponto de partida |
 | `cost` | custo e duração do ciclo (T-07) |
+| `status` | `completed` · `no-op` · `partial` · `failed` |
 
-Saída fora do esquema = **ciclo falhou**. Sem essa regra, o esquema é decoração.
+⛔ **Falta o validador em runtime.** A biblioteca `jsonschema` não é dependência do
+projeto (**P-09**), então nada valida instância contra o esquema hoje. O critério de
+pronto da fase F1 — "um relatório de exemplo valida e um quebrado é rejeitado" —
+**não está atendido**. `tests/test_schemas.py` cobre a estrutura do esquema, não a
+validação.
 
 ---
 
 ## 4. Formato de finding
 
-Campos obrigatórios — fechado em `0.2.0`, espelhado no prompt de runtime:
+Campos obrigatórios — fechado em `0.2.0`, espelhado no prompt de runtime e no
+esquema:
 
 | Campo | Conteúdo |
 |---|---|
@@ -95,9 +114,14 @@ Regras:
 - `hash` estável = tipo + caminho + âncora. É o que impede o mesmo issue de ser
   aberto 48 vezes por dia.
 
-⛔ **Falta:** o JSON Schema formal (junto com §3) e a definição exata de "âncora" no
-cálculo do `hash` — precisa sobreviver a mudança de número de linha, senão a dedup
-quebra a cada edição do arquivo.
+Formalizado em `$defs.finding` de
+[`schemas/cycle-report.schema.json`](../schemas/cycle-report.schema.json), com a
+regra de `observed` como condicional `if/then` — coberta por
+`test_observed_finding_requires_file_and_line`.
+
+⛔ **Falta:** a definição exata de "âncora" no cálculo do `hash`. Precisa sobreviver a
+mudança de número de linha, senão a dedup quebra a cada edição do arquivo e o mesmo
+achado vira issue novo.
 
 ---
 
@@ -121,18 +145,22 @@ reporta o modelo efetivamente usado, não o pedido.
 
 ⛔ **Bloqueado por P-07 e pela validação de F0.**
 
-### 6.1 Claude
+### 6.1 Claude — **implementado** em [`skill/auditor/`](../skill/auditor/)
 
 As cinco primitivas de que o AUDITOR precisa **existem** no Claude Code — skills,
 subagentes, hooks, execução recorrente por intervalo e rotinas agendadas (ADR-008).
-Isso permite montar o AUDITOR sobre mecanismo nativo, sem inventar scheduler e sem
-instalar persistência.
+O adaptador monta sobre elas, sem inventar scheduler e sem instalar persistência.
 
-⛔ A preencher: **como cada uma se declara** — formato do arquivo de skill, do
-subagente, do hook, e como registrar a rotina agendada. É trabalho de F0, e precisa
-sair com evidência (arquivo, comando, saída), não de memória.
+| Peça | Como se declara | Situação |
+|---|---|---|
+| Skill | `SKILL.md` com frontmatter (`name`, `description`, `allowed-tools`) em `.claude/skills/<nome>/` | ✅ `skill/auditor/SKILL.md` |
+| Gate de escrita (T-03) | hook `PreToolUse` no `.claude/settings.json`; nega com **exit 2** e motivo no stderr | ✅ `skill/auditor/hooks/write-gate.py` |
+| Redação de segredos (T-01) | biblioteca chamada antes de qualquer escrita | ✅ `skill/auditor/lib/redact.py` |
+| Agendamento | rotina agendada / execução recorrente da plataforma | ⛔ falta declarar |
+| Subagente | arquivo em `.claude/agents/` | ⛔ falta declarar |
 
-Enforcement de escrita (T-03) tende a ser `permissions.deny` + hook `PreToolUse`.
+⛔ **Falta:** o formato exato do arquivo de subagente e do registro da rotina
+agendada, com evidência (arquivo, comando, saída) — não de memória.
 
 ### 6.2 ShvIA
 

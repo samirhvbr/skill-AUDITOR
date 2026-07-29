@@ -7,10 +7,11 @@
 > Completar é a fase **F1** ([.continue/escopo-projeto.md](.continue/escopo-projeto.md)).
 > Ao fechar uma seção, remover a marca e bumpar `version.md`.
 >
-> **Fechado até aqui:** localização e defaults do `config.yml` (§2), esquema do
+> **Fechado até aqui:** gramática do intervalo (§1.5), localização e defaults do
+> `config.yml` (§2), **JSON Schemas** em [`schemas/`](schemas/), esquema do
 > `state.json` (§3), estrutura de `.auditor/` (§4), no-op quiescente e modo autônomo
-> (§5). **Falta:** gramática do intervalo, JSON Schema, escopo (P-02), retenção
-> (P-05) e concorrência.
+> (§5). **Falta:** validador em runtime (P-09), escopo (P-02), retenção (P-05),
+> concorrência e a definição de "âncora" no `hash` de achado.
 >
 > **Decisões** vivem em [docs/decisoes.md](docs/decisoes.md) — ADR-003 (PR/issue),
 > ADR-005 (sintaxe), ADR-006 (unidade), ADR-008 (scheduler) e ADR-009 (conteúdo não
@@ -53,9 +54,18 @@ gatilho ativo) e `run` (ciclo avulso, sem mexer no agendamento).
 
 Unidade **obrigatória**: `30` solto é rejeitado.
 
-⛔ **A definir:** conjunto fechado de unidades aceitas (`m`, `h`, `d`?), mínimo e
-máximo, e a mensagem de erro exata para intervalo inválido — que deve mostrar as
-formas válidas, não só recusar.
+Gramática fechada, expressa em `schemas/config.schema.json` (`$defs.interval`):
+
+```
+^[1-9][0-9]*[mhd]$      m = minutos · h = horas · d = dias
+```
+
+Rejeita `30` (sem unidade), `0m` (zero), `30s` (unidade fora do conjunto), `30 m`
+(espaço) e negativos. O teste `test_interval_pattern_rejects_bare_number` cobre os
+dois sentidos.
+
+⛔ **A definir:** mínimo e máximo práticos, e a mensagem de erro exata — que deve
+mostrar as formas válidas, não só recusar.
 
 ### 1.6 Regras de validação e mensagens de erro
 
@@ -103,22 +113,30 @@ skill roda nos defaults e **registra a ausência** no relatório.
 
 ### 2.3 Esquema formal
 
-⛔ **A definir.** JSON Schema, para validar o arquivo antes de rodar o ciclo.
-Configuração inválida aborta o ciclo com mensagem acionável; não cai em default
+[`schemas/config.schema.json`](schemas/config.schema.json) — `additionalProperties:
+false`, para chave desconhecida virar erro em vez de ser ignorada em silêncio.
+
+Configuração inválida **aborta o ciclo** com mensagem acionável; não cai em default
 silenciosamente.
+
+⛔ **Falta o validador.** A biblioteca `jsonschema` não é dependência do projeto
+(**P-09**), então hoje nada valida instância contra o esquema em tempo de execução.
+Os testes cobrem a estrutura do esquema, não a validação — ver
+`tests/test_schemas.py`.
 
 ---
 
 ## 3. `.auditor/state.json`
 
-Campos obrigatórios — fechados em `0.2.0`:
+Esquema: [`schemas/state.schema.json`](schemas/state.schema.json).
 
 | Campo | Papel |
 |---|---|
+| `version` | versão do esquema — incompatibilidade é erro explícito, não migração silenciosa |
 | `last_sha` | commit do último ciclo **auditado** |
 | `last_run` | data/hora do último ciclo auditado — base do fallback temporal |
 | `last_checked` | data/hora da última verificação, inclusive ciclos no-op |
-| `reported[]` | `hash` dos achados já reportados, para dedup entre ciclos |
+| `reported[]` | achados já reportados (`hash`, `first_seen`, `last_seen`, `ref`, `status`) |
 
 Regras:
 
@@ -132,8 +150,11 @@ Regras:
   (A-10 / T-06). Cresce indefinidamente — a política de poda entra junto com
   `retain_days` (P-05).
 
-⛔ **P-08** define se este arquivo é versionado, local ou derivado de fonte
-compartilhada (tag/nota git). É a decisão que falta para fechar o esquema.
+**É versionado** (ADR-010), logo é **campo de merge**. Formato precisa ser
+merge-friendly: chaves ordenadas, uma entrada por linha em `reported[]`, sem
+reformatação gratuita. Conflito resolve pela **união** de `reported[]` e pelo
+`last_run` mais recente — nunca escolhendo um lado inteiro, o que perderia achados já
+reportados e reabriria issues fechados.
 
 ---
 
@@ -151,6 +172,13 @@ compartilhada (tag/nota git). É a decisão que falta para fechar o esquema.
 
 Decisões desta seção:
 
+- **`.auditor/` é versionado** (ADR-010) — não entra no `.gitignore`. É o que faz o
+  checkpoint sobreviver a outra máquina e a CI. Consequência direta: relatório é
+  artefato **publicado**, então a redação de segredos vira pré-requisito de qualquer
+  execução, e não só das que rodam em repositório público.
+- **O AUDITOR não commita por padrão.** Em modo interativo o commit é do usuário; em
+  modo autônomo com `auto_commit: true`, o ciclo commita em `auditor/<cycle_id>` —
+  **nunca** em `master`.
 - **`index.md`, não `summary.md`** — um único arquivo cumulativo, atualizado e nunca
   recriado (A-22).
 - **Sem `.auditor/docs/`** — `.auditor/` guarda **achados e estado**, o que é do

@@ -28,6 +28,9 @@ mora em [`SPEC.md`](../SPEC.md) na raiz; o prompt de runtime do produto mora em
 | [../SECURITY.md](../SECURITY.md) | Modelo de ameaça (T-01 a T-08) e política do repositório. **Leitura obrigatória.** |
 | [../version.md](../version.md) | Fonte de verdade da versão, gatilhos de bump e formato de commit. |
 | [../CLAUDE.md](../CLAUDE.md) / [../AGENTS.md](../AGENTS.md) | Regras para quem **desenvolve** este repositório. Espelhados — editar os dois. |
+| [../skill/README.md](../skill/README.md) | A skill para Claude Code: instalação, o que o gate garante e o que não garante. |
+| [../schemas/](../schemas/) | JSON Schema de `config.yml`, `state.json` e da saída do ciclo. |
+| [../tests/](../tests/) | 43 testes, sem dependência externa. `python3 -m unittest discover -s tests` |
 | [../.continue/escopo-projeto.md](../.continue/escopo-projeto.md) | Fases F0–F6 — **proposta**, aguarda aprovação. |
 | [../.continue/estado-atual.md](../.continue/estado-atual.md) | Onde o projeto está e o que vem a seguir. |
 | [../.claude/README.md](../.claude/README.md) | Perfil de modelo e postura de permissões. |

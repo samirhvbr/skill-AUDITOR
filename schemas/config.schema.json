@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/samirhvbr/AUDITOR/schemas/config.schema.json",
+  "title": "AUDITOR .auditor/config.yml",
+  "description": "Configuracao da skill AUDITOR no repositorio auditado. Vive em .auditor/config.yml. Nenhuma chave aqui pode AMPLIAR o que a invocacao concedeu, apenas restringir (ADR-009).",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "agent": {
+      "type": "string",
+      "description": "Papel especializado do subagente.",
+      "default": "documentation-auditor"
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identificador do modelo na plataforma ativa. E uma SOLICITACAO, nao garantia: sem disponibilidade, a skill usa o fallback e reporta o modelo efetivamente usado. Catalogo por plataforma pendente (P-01)."
+    },
+    "interval": {
+      "$ref": "#/$defs/interval"
+    },
+    "language": {
+      "type": "string",
+      "description": "Idioma dos artefatos escritos em .auditor/.",
+      "default": "en-US"
+    },
+    "scope": {
+      "type": "object",
+      "description": "Escopo de arquivos e branches. Forma exata pendente (P-02).",
+      "additionalProperties": true
+    },
+    "write_policy": {
+      "type": "string",
+      "enum": ["auditor-only"],
+      "default": "auditor-only",
+      "description": "Na v1 so existe auditor-only. NAO e aplicado por esta configuracao: o enforcement e o gate externo (T-03). Esta chave declara a intencao."
+    },
+    "open_pr_issue": {
+      "type": "string",
+      "enum": ["off", "ask", "always"],
+      "default": "ask",
+      "description": "off = nunca abre; ask = so com confirmacao (default); always = abre sem perguntar. 'always' exige redacao de segredos e dedup ativas; sem as duas, degrada para 'ask'."
+    },
+    "state_source": {
+      "type": "string",
+      "enum": ["git"],
+      "default": "git"
+    },
+    "auto_scheduler": {
+      "type": "boolean",
+      "default": false,
+      "description": "Autoriza instalar gatilho de agendamento. Default false em QUALQUER plataforma, ShvIA inclusive: a autorizacao e do dono do repositorio/maquina auditada (ADR-008)."
+    },
+    "auto_commit": {
+      "type": "boolean",
+      "default": false,
+      "description": ".auditor/ e versionado (ADR-010), mas o AUDITOR nao commita por padrao. Quando true, o ciclo autonomo commita em branch proprio auditor/<cycle_id> — nunca em master."
+    },
+    "retain_days": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Retencao de relatorios. Politica pendente (P-05). ATENCAO: relatorio versionado nao some do historico quando apagado."
+    },
+    "cost_cap": {
+      "type": "object",
+      "description": "Teto de custo com kill-switch (T-07).",
+      "additionalProperties": false,
+      "properties": {
+        "per_cycle_usd": { "type": "number", "exclusiveMinimum": 0 },
+        "per_day_usd": { "type": "number", "exclusiveMinimum": 0 },
+        "max_items_per_cycle": { "type": "integer", "minimum": 0 }
+      }
+    }
+  },
+  "$defs": {
+    "interval": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]*[mhd]$",
+      "description": "Duracao com unidade OBRIGATORIA (ADR-006): m = minutos, h = horas, d = dias. Numero sem unidade e invalido — '30' e recusado, '30m' e aceito."
+    }
+  }
+}

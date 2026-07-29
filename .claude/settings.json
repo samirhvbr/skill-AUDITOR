@@ -8,7 +8,7 @@
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-5"
   },
   "permissions": {
-    "_comment": "Permissoes do projeto - AUDITOR (hoje so documentacao; stack do harness ainda nao decidida, ver docs/decisoes.md §Pendentes). Allow-list deliberadamente enxuta: git + validacao de formato. Ampliar quando a stack fechar.",
+    "_comment": "Permissoes do projeto - AUDITOR. Os controles (gate de escrita e redacao de segredos) sao Python 3 sem dependencia externa; a stack do EXECUTOR continua pendente (P-09). Allow-list enxuta: git, testes e validacao de formato.",
     "defaultMode": "plan",
     "allow": [
       "Read",
@@ -24,6 +24,8 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(python3 -m json.tool:*)",
+      "Bash(python3 -m unittest:*)",
+      "Bash(python3 -m py_compile:*)",
       "Bash(node -c:*)",
       "Bash(node --check:*)",
       "Bash(shellcheck:*)"

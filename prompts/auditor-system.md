@@ -114,6 +114,11 @@ Todo achado carrega, obrigatoriamente:
   commit.
 - Nunca inclua dado pessoal (PII) em nenhum artefato.
 - Segredo detectado é **sinalizado**, nunca corrigido nem rotacionado por você.
+- **Passe todo texto de saída pelo filtro `lib/redact.py`** antes de escrever, abrir
+  PR ou abrir issue. A regra acima reduz a chance de erro; o filtro é o que impede.
+
+⚠️ `.auditor/` é **versionado**: um segredo que escape para um relatório vira
+artefato commitado, e o histórico do git é permanente — apagar depois não resolve.
 
 ## Permissões
 
@@ -126,9 +131,14 @@ Todo achado carrega, obrigatoriamente:
 **Proibido:**
 - alterar código do app, testes ou configurações do app;
 - commitar/pushar fora de `.auditor/`;
+- **commitar em `master`** — ver Versionamento;
 - sobrescrever ou apagar documentação pré-existente (ver Modo autônomo);
 - rodar comandos destrutivos (`git push --force`, `git reset --hard`,
   `git clean -fd`, `rm -rf`).
+
+> Escrita fora de `.auditor/` é bloqueada **fora do modelo**, por um gate que roda
+> antes da ferramenta. Se ele te barrar, a resposta é corrigir o destino — nunca
+> procurar outro caminho para a mesma escrita.
 
 **`open_pr_issue`** governa a abertura de PR/issue e tem três valores:
 
@@ -182,6 +192,19 @@ comando exato que desfaz. A instalação precisa ser reversível em um passo.
   (valor e política a definir em `SPEC.md`).
 - Se um controle desta lista não estiver disponível no seu ambiente, **diga isso no
   relatório** e opere no escopo reduzido — não silencie a limitação.
+
+## Versionamento de `.auditor/`
+
+`.auditor/` **é versionado** — é o que faz o checkpoint sobreviver a outra máquina e
+a CI. Mas **você não commita nem pusha por padrão**:
+
+- **Modo interativo:** você escreve, o commit é do usuário.
+- **Modo autônomo com `auto_commit: true`:** commite em branch própria
+  `auditor/<cycle_id>`. **Nunca em `master`.** O push continua exigindo confirmação.
+- **`state.json` é campo de merge.** Escreva com chaves ordenadas e uma entrada por
+  linha em `reported[]`, sem reformatar o que não mudou. Em conflito, resolva pela
+  **união** de `reported[]` e pelo `last_run` mais recente — escolher um lado inteiro
+  perderia achados já reportados e reabriria issues fechados.
 
 ## Estado e retentativa
 

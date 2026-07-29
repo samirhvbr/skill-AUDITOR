@@ -1,6 +1,6 @@
 # Versão — AUDITOR
 
-**Versão atual:** `0.2.0`
+**Versão atual:** `0.3.0`
 
 > Este arquivo é a **fonte da verdade** da versão do projeto. Qualquer lugar que
 > precise exibir ou reportar a versão (skill, CLI, relatório de ciclo, pacote de
@@ -89,6 +89,59 @@ entrega). Commits adicionais da mesma entrega repetem a versão sem novo bump.
 
 > Ordem decrescente (mais recente no topo). Cada entrada lista as mudanças e os
 > gatilhos que justificaram o bump.
+
+### `0.3.0` — 2026-07-29 — Primeiro código: `.auditor/` versionado, esquemas e os dois controles
+
+Sai da documentação pura. Bump de **`Y`** por ADR aceito que muda a direção
+(ADR-010), esquema novo e primeiro adaptador de plataforma.
+
+**Decisão**
+- **ADR-010 — `.auditor/` é versionado** (resolve P-08). O checkpoint compartilhado
+  vale mais que o ruído, e o ruído já tem contenção no no-op quiescente. Consequências
+  que a decisão obriga e que estão propagadas: relatório vira **artefato publicado**
+  (T-01/T-05 sobem para pré-requisito de qualquer execução, não só em repo público);
+  o AUDITOR **não commita por padrão** e, em modo autônomo, commita em
+  `auditor/<cycle_id>` — nunca em `master`; `state.json` vira campo de merge, com
+  conflito resolvido pela **união** de `reported[]`.
+
+**Código**
+- `skill/auditor/hooks/write-gate.py` — **gate de escrita (T-03)**, hook `PreToolUse`.
+  Bloqueia escrita fora de `.auditor/` com `realpath` (barra `..`, caminho absoluto e
+  symlink plantado dentro de `.auditor/`), restringe Bash a allowlist de inspeção com
+  encadeamento e redirecionamento recusados, e é **fail-closed**: erro interno nega.
+  Só enforça durante um ciclo (`AUDITOR_CYCLE_ID`), senão travaria o desenvolvimento.
+- `skill/auditor/lib/redact.py` — **redação mecânica de segredos (T-01)**. Chaves de
+  nuvem, tokens de provedor, PEM, JWT, `Authorization:`, credencial em URL e
+  atribuição a variável de nome sensível. `assert_clean()` aborta publicação de
+  PR/issue que precisou ser redigida. Testada também contra **excesso**: prosa,
+  caminho de arquivo e nome de variável sem valor passam intactos.
+- `skill/auditor/SKILL.md` + `config.example.yml` + `skill/README.md` — primeiro
+  adaptador de plataforma (Claude Code), com instalação e limites declarados.
+
+**Esquemas** — fecham a maior parte de A-11
+- `schemas/config.schema.json`, `schemas/state.schema.json`,
+  `schemas/cycle-report.schema.json`. Três regras condicionais que não cabiam em
+  prosa: `observed` exige `file`+`line`; `time-window` exige `degraded_reason`;
+  `no-op` proíbe achado e artefato. `artifacts_written` só aceita caminho em
+  `.auditor/`. Gramática do intervalo fechada: `^[1-9][0-9]*[mhd]$`.
+
+**Testes** — 43, sem dependência externa
+- `tests/test_write_gate.py` (20), `tests/test_redact.py` (16),
+  `tests/test_schemas.py` (7). Cobrem os **dois sentidos**: com o controle ligado e
+  desligado. Verificado por mutação — neutralizar `inside()` no gate derruba 7 testes.
+
+**O que continua faltando, dito sem eufemismo**
+- **Não existe executor.** Nenhum ciclo completo rodou de ponta a ponta.
+- **Sem validador em runtime** (`jsonschema` não é dependência — P-09), então "saída
+  fora do esquema reprova o ciclo" ainda não acontece de fato.
+- **A-03 (prompt injection) segue sem teste:** falta o fixture com injeção plantada.
+  Enquanto isso, a defesa é afirmação, não medição.
+- Adaptador ShvIA, licença (P-10) e empacotamento não existem.
+
+_Gatilhos:_ ADR aceito que muda a direção, esquemas novos, primeiro adaptador de
+plataforma e alteração de política de segurança.
+
+---
 
 ### `0.2.0` — 2026-07-28 — Correções da revisão: 18 dos 23 achados fechados
 

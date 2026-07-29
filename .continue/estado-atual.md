@@ -28,59 +28,57 @@
   - `README.md` corrigido: id de modelo, eixo do scheduler, prompt injection,
     idioma, nomes.
 
+- **2026-07-29 — `0.3.0`: primeiro código.** Sai da documentação pura.
+  - **ADR-010** — `.auditor/` é **versionado** (decisão do Samir, resolve P-08), com
+    as consequências propagadas: relatório vira artefato publicado, o AUDITOR não
+    commita por padrão, e `state.json` precisa ser merge-friendly.
+  - **Gate de escrita (T-03)** e **redação de segredos (T-01)** implementados e
+    testados — os dois controles que transformam regra de prompt em controle real.
+  - **JSON Schemas** de config, estado e saída do ciclo.
+  - **43 testes**, sem dependência externa, cobrindo os dois sentidos.
+  - Primeiro adaptador de plataforma: a skill para Claude Code em `skill/auditor/`.
+
 ---
 
 ## Onde o projeto está
 
-**Proposta consolidada, zero implementação.** O desenho conceitual está fechado e
-coerente: 9 ADRs, o prompt de runtime escrito, o esquema de estado e a estrutura de
-`.auditor/` definidos.
+**Desenho fechado, implementação parcial.** 10 ADRs, prompt de runtime escrito, três
+esquemas, dois controles de segurança funcionando e testados.
 
-⚠️ **"Decidido e escrito" não é "implementado".** As três ameaças que bloqueiam uso
-real — conteúdo não confiável (T-02), gate de escrita (T-03) e redação de segredos
-(T-01) — têm regra escrita e **nenhum** controle mecânico. Regra no prompt reduz a
-chance de o modelo errar; não impede.
+⚠️ **Não existe executor. Nenhum ciclo completo já rodou de ponta a ponta.** O que
+existe são as peças que o ciclo vai usar.
 
----
-
-## Próximo passo (bloqueia o desenho)
-
-**Validar as primitivas do ShvIA** — fase F0, achado A-13.
-
-O ADR-008 se apoia em o Claude Code oferecer as cinco primitivas de que o AUDITOR
-precisa (skills, subagentes, hooks, execução recorrente, rotinas agendadas), o que
-está confirmado. **O equivalente no ShvIA segue como inferência.** Falta também
-documentar *como* cada primitiva se declara no Claude Code — com evidência (arquivo,
-comando, saída), não de memória.
-
-Sem isso, o adaptador de plataforma (P-07) não fecha e o executor não tem alvo.
+⚠️ **T-02 (prompt injection) continua sendo só regra escrita.** É a ameaça mais séria
+do projeto e a única do trio que ainda não tem teste — falta o fixture com injeção
+plantada. Enquanto ele não existir, a defesa é afirmação, não medição.
 
 ---
 
-## Depois disso, na ordem
+## Próximo passo
 
-1. **A-11** — JSON Schema da saída do ciclo. Os campos estão fixados; falta o
-   esquema formal, que é o que torna todo o resto testável.
-2. **P-08** — `.auditor/` versionado, ignorado ou híbrido. É o que falta para fechar
-   o esquema do `state.json`.
-3. **P-09** — stack do executor, e então o ciclo manual reproduzível (F2).
-4. **F3 — controles de segurança.** Redação de segredos, gate de escrita fora do
-   modelo e fixtures de injeção e de segredo plantado. **Bloqueia qualquer execução
-   em repositório que não seja de teste.**
-5. Definir a "âncora" do `hash` de achado, que precisa sobreviver a mudança de número
-   de linha — senão a dedup quebra a cada edição.
+**O executor de um ciclo** (F2) — é o que falta para as peças virarem produto. Ele
+depende de **P-09** (stack), a decisão que sobrou. Os controles já estão em Python 3
+sem dependência externa, o que torna Python o caminho de menor atrito, mas isso não
+decide a stack do executor.
+
+Com o executor:
+
+1. Rodar um ciclo real num repositório-fixture e ver o esquema reprovar uma saída
+   quebrada — é o critério de pronto da F1, hoje não atendido por falta de validador.
+2. Escrever o **fixture de injeção plantada** (T-02) e o de **segredo plantado** num
+   ciclo de verdade, não só na função.
+3. Dogfooding: rodar o AUDITOR neste próprio repositório.
 
 ---
 
-## Decisões que precisam do Samir
+## Também em aberto
 
-Não escolher por conta própria — cada uma muda o produto:
-
-- **P-08** — `.auditor/` versionado, ignorado ou híbrido.
-- **P-09** — stack do executor/harness (Python, Node, Rust, shell).
-- **P-10** — licença e formato de distribuição (define se o repo vira público).
-- **P-11** — gatilho por relógio, por atividade (hook) ou os dois.
-- **P-02** — escopo: repositório inteiro ou só mudanças versionadas em Git.
+- **A-13 / F0** — as primitivas do **ShvIA** seguem como inferência. O Claude Code
+  está confirmado e a skill foi construída sobre ele.
+- **Âncora do `hash`** de achado: precisa sobreviver a mudança de número de linha,
+  senão a dedup quebra a cada edição e o mesmo achado vira issue novo.
+- **P-02** (escopo), **P-05** (retenção — pesa mais agora que o relatório é
+  versionado), **P-10** (licença), **P-11** (gatilho por relógio ou por atividade).
 
 ---
 

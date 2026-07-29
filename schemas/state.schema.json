@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/samirhvbr/AUDITOR/schemas/state.schema.json",
+  "title": "AUDITOR .auditor/state.json",
+  "description": "Estado entre ciclos. E VERSIONADO (ADR-010), logo e campo de merge: chaves ordenadas, uma entrada por linha em reported[], sem reformatacao gratuita. Conflito resolve pela UNIAO de reported[] e pelo last_run mais recente — nunca escolhendo um lado inteiro, o que reabriria achados ja reportados.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "last_checked"],
+  "properties": {
+    "version": {
+      "const": 1,
+      "description": "Versao do esquema de estado. Incompatibilidade e erro explicito, nao migracao silenciosa."
+    },
+    "last_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{7,40}$",
+      "description": "Commit do ultimo ciclo AUDITADO. Validar com `git cat-file -e` antes de usar: apos rebase, squash ou force-push ele deixa de existir, e o ciclo cai para a janela desde last_run declarando a degradacao (A-09)."
+    },
+    "last_run": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora do ultimo ciclo auditado. Base do fallback temporal quando last_sha fica orfao."
+    },
+    "last_checked": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora da ultima verificacao, INCLUSIVE ciclos no-op. E o unico campo que um ciclo sem mudanca atualiza."
+    },
+    "reported": {
+      "type": "array",
+      "description": "Achados ja reportados, por hash estavel. E o que impede o mesmo issue de ser aberto a cada ciclo (T-06).",
+      "items": { "$ref": "#/$defs/reportedFinding" }
+    }
+  },
+  "$defs": {
+    "reportedFinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hash", "first_seen"],
+      "properties": {
+        "hash": {
+          "type": "string",
+          "minLength": 8,
+          "description": "Hash estavel do achado. A definicao exata da ancora ainda e pendente: precisa sobreviver a mudanca de numero de linha, senao a dedup quebra a cada edicao do arquivo."
+        },
+        "first_seen": { "type": "string", "format": "date-time" },
+        "last_seen": { "type": "string", "format": "date-time" },
+        "ref": {
+          "type": "string",
+          "description": "Referencia externa criada para este achado (URL de issue/PR), quando houver."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["open", "resolved"],
+          "default": "open"
+        }
+      }
+    }
+  }
+}

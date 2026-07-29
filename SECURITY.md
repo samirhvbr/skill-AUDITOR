@@ -11,14 +11,20 @@ Este arquivo tem duas partes:
    exatamente o perfil de uma ferramenta que, mal desenhada, vira vetor de ataque.
 2. **Política do repositório** — regras para quem desenvolve o AUDITOR aqui.
 
-> Status: as ameaças abaixo estão identificadas. Controle marcado `[x]` está
-> **decidido e escrito** — em ADR e no prompt de runtime. Controle marcado `[ ]`
-> exige **código e teste**, e é requisito de aceite antes da primeira execução real
-> em um repositório que não seja de teste.
+> Status dos controles:
 >
-> ⚠️ **Escrito não é implementado.** Uma regra no prompt reduz a chance de o modelo
-> errar; ela não impede. O que impede é gate, filtro e teste de regressão — e nada
-> disso existe ainda.
+> - `[x]` — **decidido e escrito** (ADR + prompt de runtime).
+> - `[x] ✅` — **implementado e testado**, com o teste verificado nos dois sentidos.
+> - `[ ]` — ainda exige código e teste. Requisito de aceite antes da primeira
+>   execução real em repositório que não seja de teste.
+>
+> ⚠️ **Escrito não é implementado.** Regra no prompt reduz a chance de o modelo
+> errar; não impede. O que impede é gate, filtro e teste de regressão.
+>
+> ⚠️ **`.auditor/` é versionado (ADR-010).** Relatório é artefato **commitado e
+> pushado**, e o histórico do git é permanente — apagar depois não resolve. Isso
+> eleva T-01 e T-05 de "requisito antes de rodar em repo real" para **pré-requisito
+> de qualquer execução**, inclusive em repositório privado.
 
 ---
 
@@ -49,16 +55,23 @@ token por engano — que é justamente o tipo de coisa que uma auditoria encontr
 prompt, não um controle**: o modelo pode citar a linha como evidência do achado.
 
 **Controles obrigatórios**
-- [ ] Redação **mecânica** antes de escrever qualquer artefato: regex de padrões
-      conhecidos (chaves de nuvem, `sk_*`, PEM, JWT, `Authorization:`, senhas em
-      URL) aplicada sobre todo texto de saída.
-- [ ] Denylist de caminhos nunca citados literalmente (`.env*`, `*.pem`, `*.key`,
-      `*.p12`, `*.p8`, `auth.json`, `id_rsa*`).
+- [x] ✅ Redação **mecânica** antes de escrever qualquer artefato — chaves de nuvem,
+      tokens de provedor, PEM, JWT, `Authorization:`, credencial em URL e atribuição
+      a variável com nome sensível. Em `skill/auditor/lib/redact.py`.
+- [x] ✅ Denylist de caminhos cujo conteúdo nunca é citado (`.env*`, `*.pem`,
+      `*.key`, `*.p12`, `*.p8`, `auth.json`, `id_rsa*`) — `is_sensitive_path()`.
+- [x] ✅ `assert_clean()` **aborta** a publicação quando encontra segredo no caminho
+      de PR/issue: se o texto precisou ser redigido ali, o ciclo o montou errado.
 - [x] Achado sobre segredo reporta **localização** (`arquivo:linha`) e **nunca o
-      valor** — nem truncado, nem mascarado parcialmente. Escrito no prompt de
-      runtime, §Segredos e dados sensíveis.
+      valor** — nem truncado, nem mascarado parcialmente. Mascarar parcialmente dá
+      falsa sensação de segurança: prefixo + tamanho já é informação de ataque.
 - [x] Nunca colar diff bruto em relatório, PR ou issue — só `file:line` + commit.
-- [ ] Teste de regressão com um repositório-fixture contendo segredo plantado.
+- [ ] Fixture de repositório com segredo plantado, rodando um ciclo real de ponta a
+      ponta. Os testes de hoje cobrem a **função** de redação, não o ciclo.
+
+> A redação também é testada contra **excesso**: prosa comum, caminho de arquivo e
+> nome de variável sem valor passam intactos. Filtro que redige demais destrói o
+> relatório, e alguém acaba desligando o filtro.
 
 ### T-02 — Prompt injection vindo do repositório auditado
 
@@ -90,15 +103,27 @@ deliberadamente a **primeira** seção depois da identidade).
 `write_policy: auditor-only` é uma string em um YAML lido pelo próprio agente que ela
 deveria restringir. **Prompt não é controle de acesso.**
 
-⚠️ Esta é a ameaça em que "escrito" ajuda menos: o prompt já diz para escrever só em
-`.auditor/`, e isso continua não sendo garantia nenhuma. Só o gate resolve.
-
 **Controles obrigatórios**
-- [ ] Enforcement fora do modelo: no Claude Code, `permissions.deny` +
-      hook `PreToolUse` que bloqueia `Write`/`Edit` com destino fora de `.auditor/`;
-      no ShvIA, gate equivalente no runner.
-- [ ] Caminho normalizado antes da checagem (barrar `..`, symlink e caminho absoluto).
-- [ ] Violação é **erro do ciclo**, registrada no relatório — não um aviso silencioso.
+- [x] ✅ Enforcement fora do modelo: hook `PreToolUse` em
+      `skill/auditor/hooks/write-gate.py` bloqueia `Write`/`Edit`/`MultiEdit`/
+      `NotebookEdit` com destino fora de `.auditor/`, negando com **exit 2**.
+- [x] ✅ Caminho normalizado com `realpath` antes da checagem — barra `..`, caminho
+      absoluto e **symlink plantado dentro de `.auditor/`** apontando para fora.
+- [x] ✅ Bash restrito a uma **allowlist** de inspeção durante o ciclo, com
+      encadeamento (`&&`, `;`, `|`), substituição e redirecionamento recusados.
+      Allowlist e não denylist porque denylist de shell é furada por construção.
+- [x] ✅ **Fail-closed**: erro interno do gate nega. Gate que abre quando quebra não
+      é gate.
+- [ ] Gate equivalente no runner do **ShvIA** (server-side).
+- [ ] Violação registrada no relatório do ciclo como erro — hoje ela aparece para o
+      agente e para o usuário, mas não é persistida no artefato.
+
+⚠️ **O que o gate não garante.** Ele enforça durante um ciclo, detectado pela
+variável `AUDITOR_CYCLE_ID`. Isso prova "estamos num ciclo", **não** "quem está
+pedindo a escrita é o subagente auditor" — um hook do Claude Code não distingue
+subagentes hoje. A versão estanque depende de a plataforma escopar hooks por
+subagente, ou do runner enforçar (o ShvIA pode, ADR-002). **Até lá isto é defesa em
+profundidade, não isolamento.**
 
 ### T-04 — Persistência indevida (scheduler auto-instalado)
 
@@ -197,13 +222,10 @@ o modo autônomo.
 
 ### Antes de rodar o AUDITOR em um repositório real
 
-Checklist mínimo. **Todos os itens exigem código e teste** — nenhum é satisfeito por
-uma regra escrita no prompt, e é por isso que nenhum está marcado:
-
-- [ ] Redação de segredos (T-01) implementada e testada
+- [x] ✅ Redação de segredos (T-01) implementada e testada
+- [x] ✅ Enforcement de `write_policy` fora do prompt (T-03)
 - [ ] Tratamento de conteúdo não confiável (T-02) **testado** — a regra está escrita,
       falta o fixture com injeção plantada
-- [ ] Enforcement de `write_policy` fora do prompt (T-03)
 - [ ] Registro e desinstalação de gatilho (T-04)
 - [ ] Dedup de findings e no-op quiescente (T-06) implementados
 - [ ] Teto de custo com kill-switch (T-07)
@@ -211,6 +233,13 @@ uma regra escrita no prompt, e é por isso que nenhum está marcado:
 
 Regra de aceite dos testes: **cada um precisa falhar quando o controle é desligado.**
 Teste que passa dos dois jeitos não prova nada.
+
+> Verificado por mutação, não por convicção: neutralizar `inside()` no gate derruba
+> 7 dos 43 testes. É a evidência de que a suíte mede o controle.
+
+```bash
+python3 -m unittest discover -s tests -v
+```
 
 ---
 

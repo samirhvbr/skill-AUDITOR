@@ -8,8 +8,9 @@
 > Ao aprovar (ou alterar) este escopo, registrar como **ADR-010** e bumpar `Y` em
 > `version.md`.
 >
-> **Situação:** F0 e F1 estão parcialmente feitas — o que já fechou está marcado com
-> ✅, o que falta com ⛔.
+> **Situação em `0.3.0`:** F0, F1, F3 e F4 estão **parcialmente** feitas — o que já
+> fechou está marcado com ✅, o que falta com ⛔. F2 (executor) não começou, e é o
+> gargalo: sem ele nada roda de ponta a ponta.
 
 ---
 
@@ -52,15 +53,17 @@ com "deve existir".
   `commit` / `hash` / `kind` ∈ {`observed`, `inferred`, `recommended`} (A-12).
 - ✅ Esquema do `state.json`: checkpoint resistente a rebase/squash/force-push (A-09)
   e `reported[]` para dedup (A-10).
-- ⛔ **Falta:** o **JSON Schema** da saída do ciclo e do `config.yml` (A-11) — é o
-  item que trava o "pronto quando" abaixo.
-- ⛔ **Falta:** gramática do intervalo, escopo (**P-02**), retenção (**P-05**),
-  concorrência e a definição de "âncora" no `hash`.
-- ⛔ **Falta:** fechar **P-08** (`.auditor/` versionado ou não) — muda o esquema de
-  estado.
+- ✅ **JSON Schemas** de `config.yml`, `state.json` e da saída do ciclo, em
+  [`schemas/`](../schemas/), com as regras condicionais que não cabiam em prosa.
+- ✅ Gramática do intervalo: `^[1-9][0-9]*[mhd]$`.
+- ✅ **P-08** fechada pelo ADR-010: `.auditor/` é versionado.
+- ⛔ **Falta o validador em runtime** (**P-09**) — sem ele o "pronto quando" abaixo
+  não é atingível, por mais correto que o esquema esteja.
+- ⛔ **Falta:** escopo (**P-02**), retenção (**P-05**), concorrência e a definição de
+  "âncora" no `hash`.
 
 **Pronto quando:** um relatório de exemplo valida contra o schema, e um relatório
-propositalmente quebrado é **rejeitado**.
+propositalmente quebrado é **rejeitado**. ⛔ **Não atingido** — falta validador.
 
 ---
 
@@ -86,18 +89,22 @@ esperado, e o segundo ciclo sem mudança é no-op.
 **Objetivo:** sair de "regra no prompt" para controle mecânico. Ver
 [`SECURITY.md`](../SECURITY.md).
 
-- **T-01/T-05** — redação mecânica de segredos na saída (regex + denylist de
-  caminhos); achado sobre segredo reporta `arquivo:linha`, nunca o valor.
-- **T-02** — a **regra** já está escrita no prompt (ADR-009); falta o **teste**:
-  fixture com injeção plantada, que falhe com a defesa desligada.
-- **T-03** — enforcement de `write_policy` fora do modelo (deny + hook `PreToolUse`
-  no Claude; gate no runner do ShvIA), com caminho normalizado.
-- **T-08** — em modo autônomo, nunca sobrescrever arquivo pré-existente.
-- Fixtures de regressão para segredo plantado e para injeção plantada (README,
-  comentário e mensagem de commit).
+- ✅ **T-01** — redação mecânica em `skill/auditor/lib/redact.py`, com denylist de
+  caminhos e `assert_clean()` abortando publicação. 16 testes, incluindo os de
+  não-redigir-demais.
+- ✅ **T-03** — gate de escrita em `skill/auditor/hooks/write-gate.py`: `realpath`,
+  allowlist de Bash, fail-closed. 20 testes.
+- ⛔ **T-02** — a **regra** está escrita no prompt (ADR-009); falta o **teste**:
+  fixture com injeção plantada em README, comentário e mensagem de commit, que falhe
+  com a defesa desligada. **É a ameaça mais séria e a única do trio sem medição.**
+- ⛔ **T-03 no ShvIA** — gate equivalente no runner, server-side.
+- ⛔ **T-08** — verificar em teste a não-sobrescrita em modo autônomo.
+- ⛔ Fixture de repositório com segredo plantado rodando um **ciclo real**; os testes
+  de hoje cobrem a função de redação, não o ciclo.
 
 **Pronto quando:** os testes de regressão passam **e** falham quando o controle é
-desligado — controle que não é testado nos dois sentidos não é controle.
+desligado. ✅ Verificado por mutação para T-01 e T-03 (neutralizar `inside()` derruba
+7 testes); ⛔ não verificado para T-02.
 
 ---
 
@@ -105,10 +112,10 @@ desligado — controle que não é testado nos dois sentidos não é controle.
 
 **Objetivo:** o mesmo ciclo rodando em Claude e em ShvIA.
 
-- Adaptador **ShvIA** primeiro (controle total, ADR-002) — serve de referência do
-  comportamento pretendido.
-- Adaptador **Claude** em paralelo — mostra o que dá para fazer sem controlar a
-  plataforma.
+- ✅ Adaptador **Claude** em [`skill/auditor/`](../skill/auditor/) — saiu primeiro,
+  invertendo o plano original, porque as primitivas já estavam confirmadas (ADR-008)
+  e os controles precisavam de um alvo concreto para deixar de ser prosa.
+- ⛔ Adaptador **ShvIA** (controle total, ADR-002) — depende da validação de F0.
 - Divergência entre plataformas é **documentada**, não escondida atrás de um "deve
   funcionar igual".
 

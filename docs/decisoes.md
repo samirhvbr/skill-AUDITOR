@@ -186,6 +186,38 @@ Status possíveis: **Aceito** · **Em revisão** · **Substituído por ADR-NNN**
 
 ---
 
+## ADR-010 — `.auditor/` é versionado
+
+- **Data:** 2026-07-29 · **Status:** Aceito · **Resolve:** P-08
+- **Contexto:** as duas opções tinham custo. **Não versionado**, o estado é local:
+  roda em outra máquina ou em CI e o checkpoint some, então as auditorias se repetem
+  do zero. **Versionado**, cada ciclo produz commit, o `state.json` vira campo de
+  merge e o relatório vai para o remoto.
+- **Decisão:** `.auditor/` é **versionado**. O checkpoint compartilhado vale mais do
+  que o ruído, e o ruído tem contenção (ver consequência 4).
+- **Consequências que a decisão obriga:**
+  1. **Relatório é artefato publicado.** T-01 e T-05 sobem de severidade: um segredo
+     citado num relatório passa a ser **commitado e pushado**. A redação mecânica
+     deixa de ser "requisito de aceite antes de rodar em repo real" e vira
+     pré-requisito de **qualquer** execução — inclusive em repositório privado,
+     porque o histórico do git é permanente e apagar depois não resolve.
+  2. **Política de commit.** O AUDITOR escreve, mas **não commita nem pusha por
+     padrão**. Em modo interativo, o commit é do usuário. Em modo autônomo, o ciclo
+     commita em **branch próprio** (`auditor/<cycle_id>`), nunca em `master`, e o
+     push segue a regra de confirmação que já existia.
+  3. **`state.json` precisa ser merge-friendly.** Chaves ordenadas, uma entrada por
+     linha em `reported[]`, sem reformatação gratuita. Conflito resolve pela **união**
+     de `reported[]` e pelo `last_run` mais recente — nunca escolhendo um lado
+     inteiro, que perderia achados já reportados e reabriria issues fechados.
+  4. **Ruído de histórico** é contido pelo **no-op quiescente**, já decidido: ciclo
+     sem mudança não escreve arquivo, logo não gera commit. Sem ele, esta decisão
+     encheria o histórico.
+  5. **`retain_days` ganha peso** (P-05): relatório versionado não some quando
+     apagado — fica no histórico. A retenção precisa estar decidida **antes** de
+     rodar em repositório público.
+
+---
+
 ## Decisões pendentes
 
 Numeradas para poder referenciar. As sete primeiras vêm do `README.md`; P-08 a P-11
@@ -199,13 +231,13 @@ foram levantadas na [revisão inicial](revisao-inicial.md).
 | **P-04** | Branches, merge commits e arquivos não rastreados na detecção | Estado | A-09 |
 | **P-05** | Retenção de relatórios e política de dados sensíveis (`retain_days`) | `SPEC.md` | T-01 |
 | **P-06** | Onde o gatilho instalado persiste, por plataforma | ADR-008 | T-04 |
-| **P-07** | Contrato exato de entrada/saída por plataforma | `contrato-subagente.md` | A-11 |
-| **P-08** | `.auditor/` é versionado, ignorado ou híbrido | Tudo | A-08 |
-| **P-09** | Stack do executor/harness (Python, Node, Rust, shell) | Implementação | — |
+| **P-07** | Contrato de entrada/saída do adaptador **ShvIA** | `contrato-subagente.md` | A-11 |
+| **P-09** | Stack do executor/harness (só os controles estão em Python) | Implementação | — |
 | **P-10** | Licença e formato de distribuição da skill | Publicação | A-17 |
 | **P-11** | Gatilho por relógio, por atividade (hook) ou os dois | Desenho | A-07 |
 
-**P-12 — resolvida** em 2026-07-28 pelo ADR-007 (`AGENTS.md` × `AGENT.md`).
+**Resolvidas:** P-12 pelo ADR-007 (28/07) · **P-08 pelo ADR-010** (29/07) ·
+P-07 parcialmente, pelo adaptador Claude em `skill/auditor/` — falta o ShvIA.
 
 ### Divergências normativas — reconciliadas em `0.2.0`
 

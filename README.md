@@ -2,6 +2,10 @@
 
 Skill para executar um subagente de auditoria de código em ciclos periódicos, identificar mudanças recentes sem documentação suficiente e registrar a documentação produzida no diretório `.auditor`.
 
+> **Código:** [skill/](skill/) (a skill para Claude Code — gate de escrita e redação
+> de segredos) · [schemas/](schemas/) (JSON Schema de config, estado e saída) ·
+> [tests/](tests/) (43 testes, sem dependência externa).
+>
 > **Documentação:** [CLAUDE.md](CLAUDE.md) / [AGENTS.md](AGENTS.md) (regras de quem
 > desenvolve este repo) ·
 > [SECURITY.md](SECURITY.md) (modelo de ameaça — leitura obrigatória) ·
@@ -12,6 +16,9 @@ Skill para executar um subagente de auditoria de código em ciclos periódicos, 
 > [docs/revisao-inicial.md](docs/revisao-inicial.md) (revisão de 2026-07-28) ·
 > [version.md](version.md) (versão e formato de commit) ·
 > [.continue/estado-atual.md](.continue/estado-atual.md) (onde o projeto está).
+>
+> ⚠️ **Ainda não existe executor.** Os dois controles de segurança estão
+> implementados e testados, mas nenhum ciclo completo já rodou de ponta a ponta.
 
 > Status: proposta em evolução. Decisões fechadas: plataformas-alvo (Claude e ShvIA, com OpenAI descartado da primeira versão), permissão de abrir PR/issue com política de três valores, política de scheduler (usar o mecanismo nativo da plataforma; auto-instalação é último recurso e depende do dono do repositório auditado), sintaxe do comando, unidade obrigatória no intervalo, organização dos arquivos de agente e tratamento do conteúdo auditado como não confiável — ver [`docs/decisoes.md`](docs/decisoes.md). Identificadores exatos de modelo, escopo, retenção e demais pontos seguem em validação na `SPEC.md`.
 
@@ -102,6 +109,11 @@ A primeira versão deve ser somente de auditoria e documentação:
 A estrutura pode ser simplificada se a plataforma não permitir múltiplos arquivos.
 
 > **`.auditor/` guarda o que é do robô — achados e estado — e não documentação final.** Nos repositórios da casa já existem três destinos definidos (`docs/`, `.continue/`, `version.md`); um quarto autor escrevendo documentação sobre os mesmos assuntos diverge. O que o AUDITOR quiser promover a documentação oficial vira **proposta de diff para `docs/`**, revisada por humano. Detalhe pendente em P-03.
+
+**`.auditor/` é versionado** (ADR-010) — não entra no `.gitignore`. É o que faz o checkpoint sobreviver a outra máquina e a CI. Duas consequências que a decisão obriga:
+
+- **Relatório é artefato publicado.** Um segredo que escape para um relatório vira commit, e o histórico do git é permanente — apagar depois não resolve. Por isso a redação mecânica é pré-requisito de qualquer execução, não só das que rodam em repositório público.
+- **O AUDITOR não commita por padrão.** Em modo interativo o commit é do usuário; em modo autônomo com `auto_commit: true`, o ciclo commita em `auditor/<cycle_id>` — nunca em `master`. E o `state.json` precisa ser merge-friendly, com conflito resolvido pela união de `reported[]`.
 
 ## Contrato de execução do subagente
 
@@ -259,6 +271,7 @@ Registradas como ADRs em [`docs/decisoes.md`](docs/decisoes.md).
 6. **Intervalo sem unidade:** não aceitar `30` solto; exigir unidade explícita (ADR-006).
 7. **Arquivos de agente:** artefato do produto mora em `prompts/` e `docs/`; a raiz fica para os arquivos do repositório (ADR-007).
 8. **Conteúdo do repositório auditado é dado, nunca instrução**, e a lista de arquivos obedecidos é fechada e só restringe (ADR-009).
+9. **`.auditor/` é versionado** — o checkpoint compartilhado vale mais que o ruído, contido pelo no-op quiescente (ADR-010).
 
 ## Decisões ainda necessárias
 
@@ -270,11 +283,10 @@ Numeradas como P-01 a P-11 em [`docs/decisoes.md`](docs/decisoes.md).
 4. Como lidar com branches, merge commits e arquivos não rastreados na detecção (P-04).
 5. Retenção dos relatórios e política para dados sensíveis — `retain_days` (P-05).
 6. Onde o gatilho instalado persiste e como é desinstalado (P-06).
-7. Contrato exato de entrada/saída entre o AUDITOR e cada plataforma (P-07).
-8. Se `.auditor/` é versionado, ignorado ou híbrido (P-08).
-9. Stack do executor/harness (P-09).
-10. Licença e formato de distribuição da skill (P-10).
-11. Gatilho por relógio, por atividade ou os dois (P-11).
+7. Contrato de entrada/saída do adaptador **ShvIA** (P-07) — o do Claude já existe em [`skill/auditor/`](skill/auditor/).
+8. Stack do executor/harness (P-09) — hoje só os controles estão em Python.
+9. Licença e formato de distribuição da skill (P-10).
+10. Gatilho por relógio, por atividade ou os dois (P-11).
 
 ## Próximos passos sugeridos
 

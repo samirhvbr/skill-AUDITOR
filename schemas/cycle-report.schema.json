@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/samirhvbr/AUDITOR/schemas/cycle-report.schema.json",
+  "title": "AUDITOR cycle output",
+  "description": "Saida estruturada de UM ciclo de auditoria. Saida fora deste esquema significa CICLO FALHADO — sem essa regra o esquema e decoracao (A-11).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "cycle_id",
+    "status",
+    "model",
+    "range",
+    "files_inspected",
+    "findings",
+    "artifacts_written",
+    "limitations",
+    "pending_decisions",
+    "next_checkpoint"
+  ],
+  "properties": {
+    "cycle_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identificador do ciclo. Mesmo formato do nome do relatorio: YYYY-MM-DD-HHMM."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["completed", "no-op", "partial", "failed"],
+      "description": "no-op = nao houve mudanca desde o checkpoint; partial = falha parcial, alguns escopos nao auditados."
+    },
+    "interval": { "type": "string", "pattern": "^[1-9][0-9]*[mhd]$" },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["used"],
+      "description": "O modelo EFETIVAMENTE usado, nao o solicitado. Divergencia entre os dois e informacao, nao detalhe.",
+      "properties": {
+        "requested": { "type": "string" },
+        "used": { "type": "string", "minLength": 1 },
+        "fallback": { "type": "boolean", "default": false }
+      }
+    },
+    "range": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["commit-range", "time-window", "full"],
+          "description": "time-window = degradacao por checkpoint orfao (rebase/squash/force-push). full = sem estado anterior."
+        },
+        "from_sha": { "type": "string" },
+        "to_sha": { "type": "string" },
+        "since": { "type": "string", "format": "date-time" },
+        "degraded_reason": {
+          "type": "string",
+          "description": "Obrigatorio quando mode = time-window: por que o checkpoint nao pode ser usado. Degradacao silenciosa e proibida."
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "mode": { "const": "time-window" } }, "required": ["mode"] },
+          "then": { "required": ["since", "degraded_reason"] }
+        },
+        {
+          "if": { "properties": { "mode": { "const": "commit-range" } }, "required": ["mode"] },
+          "then": { "required": ["from_sha", "to_sha"] }
+        }
+      ]
+    },
+    "files_inspected": { "type": "array", "items": { "type": "string" } },
+    "changes": { "type": "array", "items": { "type": "string" } },
+    "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+    "artifacts_written": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^\\.auditor/",
+        "description": "Na v1 toda escrita fica dentro de .auditor/. Caminho fora daqui e violacao de write_policy e reprova o ciclo."
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Limitacoes e degradacoes. Controle indisponivel no ambiente entra aqui — nao se silencia."
+    },
+    "pending_decisions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Itens que exigem decisao do usuario. Em modo autonomo, toda regra que pediria confirmacao degrada para NAO FAZER e o item cai aqui."
+    },
+    "next_checkpoint": { "type": "string", "minLength": 1 },
+    "cost": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "usd": { "type": "number", "minimum": 0 },
+        "input_tokens": { "type": "integer", "minimum": 0 },
+        "output_tokens": { "type": "integer", "minimum": 0 },
+        "duration_s": { "type": "number", "minimum": 0 },
+        "cap_hit": { "type": "boolean", "default": false }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "comment": "Ciclo no-op nao escreve artefato e nao emite achado (A-07).",
+      "if": { "properties": { "status": { "const": "no-op" } }, "required": ["status"] },
+      "then": {
+        "properties": {
+          "findings": { "maxItems": 0 },
+          "artifacts_written": { "maxItems": 0 }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "hash", "summary"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["observed", "inferred", "recommended"],
+          "description": "observed = fato verificado; inferred = deducao; recommended = sugestao. Misturar os tres e o defeito que a regra de evidencia existe para evitar."
+        },
+        "file": { "type": "string" },
+        "line": {
+          "oneOf": [
+            { "type": "integer", "minimum": 1 },
+            { "type": "string", "pattern": "^[1-9][0-9]*(-[1-9][0-9]*)?$" }
+          ]
+        },
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+        "hash": { "type": "string", "minLength": 8 },
+        "summary": { "type": "string", "minLength": 1, "description": "Uma frase." },
+        "detail": { "type": "string" },
+        "secret_suspected": {
+          "type": "boolean",
+          "default": false,
+          "description": "Marca achado sobre segredo. Quando true, o valor NUNCA aparece em nenhum campo — nem truncado, nem mascarado. So a localizacao."
+        }
+      },
+      "allOf": [
+        {
+          "comment": "Achado 'observed' sem file:line e invalido — e o que transforma 'nao invente' em regra verificavel (A-12).",
+          "if": { "properties": { "kind": { "const": "observed" } }, "required": ["kind"] },
+          "then": { "required": ["file", "line"] }
+        }
+      ]
+    }
+  }
+}

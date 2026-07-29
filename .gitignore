@@ -19,10 +19,10 @@ tmp/
 CLAUDE.local.md
 .claude/settings.local.json
 
-# ── Saída do próprio AUDITOR quando rodado neste repo ───────────────
-# Ver ADR pendente em docs/decisoes.md (§Pendentes): ainda não está decidido
-# se `.auditor/` é versionado. Enquanto não decidir, fica fora do git.
-.auditor/
+# ── `.auditor/` é VERSIONADO (ADR-010) — não ignorar ────────────────
+# A saída do AUDITOR entra no git de propósito: é o que faz o checkpoint
+# sobreviver a outra máquina e a CI. Consequência: relatório é artefato
+# PUBLICADO — a redação de segredos (T-01) é pré-requisito, não opcional.
 
 # ── Python (caso o harness venha em Python) ─────────────────────────
 __pycache__/

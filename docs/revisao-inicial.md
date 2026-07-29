@@ -26,25 +26,27 @@ Legenda de severidade e totais: **23 achados** — 🔴 6 altos · 🟡 12 médi
 
 ---
 
-## Situação em `0.2.0` (2026-07-28)
+## Situação em `0.3.0` (2026-07-29)
 
-**18 resolvidos · 3 documentados, à espera de implementação · 2 abertos.**
+**20 resolvidos · 2 parciais · 1 aberto.** A `0.2.0` fechou 18 por decisão; a `0.3.0`
+fechou A-08 (decisão do Samir) e converteu A-04 e A-05 de regra escrita em **código
+com teste**.
 
 | # | Achado | Situação |
 |---|---|---|
 | A-01 | Identificador de modelo inválido | ✅ exemplos usam `claude-sonnet-5`; catálogo = P-01 |
 | A-02 | Eixo da autorização de scheduler | ✅ ADR-008 |
 | A-03 | Prompt injection | ✅ ADR-009 + prompt de runtime · fixtures em F3 |
-| A-04 | `write_policy` não é enforceable | 📋 documentado (README, SECURITY T-03) · gate é implementação, F3 |
-| A-05 | Segredo do diff vaza no relatório | 📋 regra no prompt · redação mecânica é implementação, F3 |
+| A-04 | `write_policy` não é enforceable | ✅ **gate implementado** — `skill/auditor/hooks/write-gate.py`, 20 testes |
+| A-05 | Segredo do diff vaza no relatório | ✅ **redação implementada** — `skill/auditor/lib/redact.py`, 16 testes |
 | A-06 | Confirmação × execução autônoma | ✅ modo autônomo definido |
 | A-07 | Relatório vazio a cada ciclo | ✅ no-op quiescente definido |
-| A-08 | `.auditor/` versionado? | 🕐 aberto — **P-08** |
+| A-08 | `.auditor/` versionado? | ✅ **versionado** — ADR-010 |
 | A-09 | Checkpoint órfão | ✅ regra definida (SPEC §3 + prompt) · implementação em F2 |
 | A-10 | Flood de PR/issue | ✅ `reported[]` + `hash` definidos · implementação em F5 |
-| A-11 | Contrato de saída em prosa | 🕐 parcial — campos fixados; **falta o JSON Schema** |
+| A-11 | Contrato de saída em prosa | 🕐 parcial — **JSON Schema escrito** (`schemas/`); falta o validador em runtime (P-09) |
 | A-12 | Formato de evidência | ✅ fechado (`kind`/`file`/`line`/`commit`/`hash`) |
-| A-13 | Premissa "plataforma não agenda" | ✅ Claude confirmado (ADR-008) · **ShvIA falta**, F0 |
+| A-13 | Premissa "plataforma não agenda" | 🕐 parcial — Claude confirmado e skill construída sobre as primitivas · **ShvIA falta**, F0 |
 | A-14 | `.auditor/` × padrão da casa | ✅ sem `.auditor/docs/`; promoção via diff · cadência = P-03 |
 | A-15 | Ambiguidade de idioma | ✅ corrigido no README |
 | A-16 | Links quebrados | ✅ resolvido |
@@ -56,9 +58,11 @@ Legenda de severidade e totais: **23 achados** — 🔴 6 altos · 🟡 12 médi
 | A-22 | `summary.md` × `index.md` | ✅ `index.md` |
 | A-23 | Chave `auto_fix` | ✅ removida |
 
-⚠️ **Resolvido aqui significa "decidido e escrito", não "implementado".** A-03, A-04
-e A-05 só viram controle de verdade quando existir código e teste de regressão que
-falhe com o controle desligado — fase F3.
+⚠️ **A-04 e A-05 agora são código com teste** — verificados nos dois sentidos
+(neutralizar `inside()` no gate derruba 7 testes). **A-03 continua sendo só regra
+escrita:** falta o fixture com injeção plantada, que é o que provaria a defesa. E
+nenhum dos três foi exercitado num ciclo real de ponta a ponta, porque ainda não
+existe executor.
 
 ---
 
@@ -491,14 +495,15 @@ limites.
 1. ~~**A-19**~~ ✅ — `AGENTS.md` vs `AGENT.md`, resolvido no ADR-007.
 2. ~~**A-20** a **A-23**~~ ✅ — divergências normativas reconciliadas.
 3. **A-13** — validar as primitivas de **cada** plataforma. O Claude Code está
-   confirmado (ADR-008); o ShvIA ainda não. É o que falta para fechar o desenho.
-4. **A-03**, **A-04**, **A-05** — o trio que transforma regra de prompt em controle
-   real. Decididos e escritos; viram controle só com código e teste de regressão
-   (F3). **Bloqueiam qualquer execução em repositório que não seja de teste.**
-5. **A-11** — falta o JSON Schema da saída. ~~A-12~~ ✅ (formato de evidência
-   fechado). É o que torna o resto testável.
-6. **A-08** — `.auditor/` versionado ou não (P-08). ~~A-09~~ ✅ (regra do checkpoint
-   definida; falta implementar).
+   confirmado e a skill foi construída sobre ele; o **ShvIA ainda não**.
+4. ~~**A-04**, **A-05**~~ ✅ — gate de escrita e redação de segredos implementados e
+   testados. **A-03 continua aberto na parte que importa**: falta o fixture com
+   injeção plantada. Enquanto ele não existir, a defesa contra prompt injection é
+   afirmação, não medição.
+5. **A-11** — JSON Schema escrito; falta o **validador em runtime** (P-09), sem o
+   qual "saída fora do esquema reprova o ciclo" não acontece de fato.
+6. ~~**A-08**~~ ✅ (versionado, ADR-010). ~~A-09~~ ✅ (regra do checkpoint definida;
+   falta implementar no executor).
 7. ~~**A-01**, **A-15**, **A-16**, **A-18**~~ ✅ — correções de texto aplicadas.
 8. O resto conforme as fases de [.continue/escopo-projeto.md](../.continue/escopo-projeto.md).
 

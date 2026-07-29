@@ -55,14 +55,27 @@ na raiz com nome que ferramenta carrega sozinha.
 
 ---
 
-## ⚠️ Estado do projeto: proposta, sem implementação
+## ⚠️ Estado do projeto: desenho fechado, implementação parcial
 
-Hoje o repositório tem **apenas documentação**. Não existe skill, executor, CLI,
-teste ou pacote. Ao trabalhar aqui:
+O que **existe e roda**: a skill para Claude Code em [skill/auditor/](skill/auditor/),
+o gate de escrita (T-03), a redação de segredos (T-01), os JSON Schemas em
+[schemas/](schemas/) e 43 testes.
+
+O que **não existe**: executor de ciclo, adaptador ShvIA, validador de esquema em
+runtime, pacote distribuível. **Nenhum ciclo completo já rodou de ponta a ponta.**
+
+```bash
+python3 -m unittest discover -s tests -v     # 43 testes, sem dependência externa
+```
+
+Ao trabalhar aqui:
 
 - **Não descreva como pronto** o que ainda é proposta. `SPEC.md` e
-  `docs/contrato-subagente.md` contêm seções marcadas como esqueleto ou pendentes —
-  respeite as marcações.
+  `docs/contrato-subagente.md` marcam com ⛔ o que falta — respeite as marcações.
+- **Não confunda "escrito" com "implementado".** Regra no prompt reduz a chance de o
+  modelo errar; não impede. Controle só conta quando existe teste que **falha com ele
+  desligado** — é a regra de aceite do `SECURITY.md`, e ela foi verificada por
+  mutação, não por convicção.
 - **Não feche decisão pendente dentro de um how-to.** Decisão nova vira **ADR**
   em [docs/decisoes.md](docs/decisoes.md), com data e status.
 - Antes de propor arquitetura, leia [docs/revisao-inicial.md](docs/revisao-inicial.md):
@@ -153,6 +166,8 @@ E o que o AUDITOR **nunca** faz na v1:
 
 - Versão e commits: [version.md](version.md)
 - Segurança / modelo de ameaça: [SECURITY.md](SECURITY.md)
+- Skill e controles: [skill/README.md](skill/README.md)
+- Esquemas: [schemas/](schemas/) · Testes: `python3 -m unittest discover -s tests`
 - Decisões (ADRs): [docs/decisoes.md](docs/decisoes.md)
 - Achados: [docs/revisao-inicial.md](docs/revisao-inicial.md)
 - Prompt de runtime: [prompts/auditor-system.md](prompts/auditor-system.md)
