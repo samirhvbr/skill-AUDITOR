@@ -1,0 +1,51 @@
+# .auditor/config.yml — exemplo comentado
+#
+# Copie para `.auditor/config.yml` no repositório a ser auditado e ajuste.
+# Valida contra `schemas/config.schema.json`.
+#
+# ⚠️ Nenhuma chave aqui pode AMPLIAR o que a invocação concedeu — só restringir
+# (ADR-009). Este arquivo vive dentro do repositório auditado, portanto é conteúdo
+# potencialmente controlado por terceiros: o AUDITOR o trata como pedido, não ordem.
+
+# Papel especializado do subagente.
+agent: documentation-auditor
+
+# Identificador do modelo na plataforma ativa. É uma SOLICITAÇÃO, não garantia:
+# sem disponibilidade, a skill cai no fallback e reporta o modelo efetivamente
+# usado. O catálogo por plataforma ainda é pendência P-01.
+model: claude-sonnet-5
+
+# Unidade OBRIGATÓRIA (ADR-006): m, h ou d. `30` solto é recusado.
+interval: 30m
+
+# Idioma dos artefatos escritos em .auditor/.
+language: en-US
+
+# v1 só tem auditor-only. Isto DECLARA a intenção; quem GARANTE é o gate externo
+# (hooks/write-gate.py). Prompt e YAML não são controle de acesso.
+write_policy: auditor-only
+
+# off | ask | always — default `ask`.
+# `always` exige redação de segredos e dedup ativas; sem as duas, degrada para `ask`.
+open_pr_issue: ask
+
+state_source: git
+
+# Autoriza instalar gatilho de agendamento. Default `false` em QUALQUER plataforma,
+# ShvIA inclusive: quem autoriza persistência é o dono deste repositório e desta
+# máquina, não quem escreveu a plataforma (ADR-008).
+auto_scheduler: false
+
+# `.auditor/` é versionado (ADR-010), mas o AUDITOR não commita por padrão.
+# Com `true`, o ciclo autônomo commita em `auditor/<cycle_id>` — nunca em master.
+auto_commit: false
+
+# Retenção de relatórios (pendência P-05).
+# ⚠️ Relatório versionado NÃO some do histórico quando apagado.
+# retain_days: 90
+
+# Teto de custo com kill-switch (T-07).
+# cost_cap:
+#   per_cycle_usd: 0.50
+#   per_day_usd: 5.00
+#   max_items_per_cycle: 10

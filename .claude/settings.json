@@ -64,5 +64,21 @@
       "Bash(gh pr create:*)",
       "Bash(gh issue create:*)"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/skills/auditor/hooks/write-gate.py\"",
+            "timeout": 5,
+            "statusMessage": "auditor: gate de escrita"
+          }
+        ]
+      }
+    ],
+    "_comment_auditor": "PreToolUse write-gate: enforca write_policy=auditor-only FORA do modelo (T-03). So atua durante um ciclo (AUDITOR_CYCLE_ID no ambiente) — fora dele e transparente, senao travaria o desenvolvimento normal deste repo."
   }
 }
